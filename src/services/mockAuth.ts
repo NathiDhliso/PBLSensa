@@ -40,15 +40,22 @@ export const mockAuthService = {
       },
     });
 
+    // Filter out undefined values for the attributes
+    const userAttributes: Record<string, string> = { email };
+    if (attributes) {
+      Object.entries(attributes).forEach(([key, value]) => {
+        if (value !== undefined) {
+          userAttributes[key] = value;
+        }
+      });
+    }
+
     // Automatically sign in the user after signup
     currentUser = {
       userId: `mock-${Date.now()}`,
       username: email,
       email: email,
-      attributes: {
-        email,
-        ...attributes,
-      },
+      attributes: userAttributes,
     };
 
     // Store in localStorage for persistence
@@ -60,7 +67,7 @@ export const mockAuthService = {
   /**
    * Confirm sign up (no-op for mock)
    */
-  async confirmSignUp(email: string, code: string): Promise<void> {
+  async confirmSignUp(email: string, _code: string): Promise<void> {
     await new Promise(resolve => setTimeout(resolve, 300));
     console.log('[Mock Auth] Sign up confirmed:', email);
   },
@@ -77,11 +84,19 @@ export const mockAuthService = {
       throw new Error('Invalid email or password');
     }
 
+    // Filter out undefined values for the attributes
+    const attributes: Record<string, string> = {};
+    Object.entries(user.attributes).forEach(([key, value]) => {
+      if (value !== undefined) {
+        attributes[key] = value;
+      }
+    });
+
     currentUser = {
       userId: `mock-${Date.now()}`,
       username: email,
       email: user.email,
-      attributes: user.attributes,
+      attributes,
     };
 
     // Store in localStorage for persistence
