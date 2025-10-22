@@ -1,0 +1,61 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowAllCoreServices",
+            "Effect": "Allow",
+            "Action": [
+                "apigateway:*",
+                "application-autoscaling:*",
+                "cloudformation:Describe*",
+                "cloudformation:Get*",
+                "cloudformation:List*",
+                "cognito-idp:*",
+                "ec2:*",
+                "ecr:*",
+                "ecs:*",
+                "elasticache:*",
+                "elasticloadbalancing:*",
+                "iam:CreateServiceLinkedRole",
+                "iam:GetRole",
+                "iam:PassRole",
+                "kms:*",
+                "logs:*",
+                "rds:*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "AllowScopedResourceManagement",
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:*",
+                "iam:AttachRolePolicy",
+                "iam:CreateRole",
+                "iam:DeleteRole",
+                "iam:DeleteRolePolicy",
+                "iam:DetachRolePolicy",
+                "iam:GetRolePolicy",
+                "iam:ListRolePolicies",
+                "iam:ListAttachedRolePolicies",
+                "iam:PutRolePolicy",
+                "iam:TagRole",
+                "s3:*",
+                "secretsmanager:*",
+                "sqs:*",
+                "ssm:*"
+            ],
+            "Resource": [
+                "arn:aws:dynamodb:*:*:table/pbl-terraform-locks-dev",
+                "arn:aws:iam::*:role/pbl-development-*",
+                "arn:aws:s3:::pbl-development-*",
+                "arn:aws:s3:::pbl-development-*/*",
+                "arn:aws:s3:::pbl-terraform-state-dev",
+                "arn:aws:s3:::pbl-terraform-state-dev/*",
+                "arn:aws:secretsmanager:*:*:secret:pbl/development/*",
+                "arn:aws:sqs:*:*:pbl-development-*",
+                "arn:aws:ssm:*:*:parameter/pbl/development/*"
+            ]
+        }
+    ]
+}

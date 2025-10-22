@@ -1,0 +1,54 @@
+Sensa Learn™ User Documentation
+Welcome to Sensa Learn: From Understanding to Memory
+You've used Perspective-Based Learning (PBL) to analyze your course materials and see the big picture. Now, it's time to make that knowledge stick.
+Sensa Learn is a revolutionary learning portal designed to teleport you from analysis to deep comprehension and long-term memory. It takes the complex chapters and domains identified by PBL and translates them into simple, memorable concepts using personalized analogies tailored specifically to you, all within an immersive, focused environment.
+How to Access Sensa Learn
+Once your concept map is ready in the main PBL view, you'll see a new option: a button labeled "Enter Sensa Learn" or "Start Memorizing." Clicking this will transport you into a new, focused learning environment designed to minimize distractions and maximize retention.
+Your Learning Dashboard
+Upon entering Sensa Learn, you'll land on your personal dashboard for the course. Here, you will find a clear list of all the chapters and major topics from your materials.
+Each chapter will display:
+•	Chapter/Domain Title: The specific topic you'll be focusing on.
+•	Complexity Score: A helpful indicator ("High," "Medium," or "Low") that shows how dense the material is, allowing you to prioritize your study sessions.
+•	"Simplify" Button: Your starting point for each learning module.
+The Analogy View: Simplifying the Complex
+This is the core of the Sensa Learn experience. When you click "Simplify" on a challenging chapter, you'll enter the Analogy View. The screen is intuitively designed for learning, with gentle, calming visuals in the background—like slowly shifting abstract patterns or serene nature scenes—to help you focus.
+•	The Core Concept: On one side, you'll see a clean, concise summary of the topic, distilled from your course materials.
+•	Your Personalized Analogies: On the other side, you'll find a series of "analogy cards." Each card uses a simple, relatable concept to explain the complex topic.
+What's on an Analogy Card?
+•	Analogy Title: A familiar concept (e.g., "A City's Traffic System").
+•	Analogy Text: A short paragraph that connects the familiar concept to the academic one.
+•	Personalization Hint: A small note explaining why this specific analogy was chosen for you (e.g., "Suggested because you're interested in Urban Planning" or "Based on your location in Midrand").
+•	Learning Mantra (NEW!): A memorable acronym or mantra created from the key terms in the analogy. Recite it to quickly recall the core idea during revision.
+•	Feedback: Simple "thumbs up" / "thumbs down" icons. Your feedback is crucial as it helps the system learn what works best for you.
+After reviewing the analogies, you can click "Mark as Understood" to move on to the next concept.
+Your Immersive Learning Environment
+Sensa Learn is more than just text on a screen. It's a full sensory experience designed to create the optimal mindset for learning and retention.
+•	Audio Narration (Powered by Eleven Labs): Activate the voice feature to have core concepts, analogies, and mantras read aloud in a clear, natural-sounding voice. This is perfect for auditory learners or for reviewing material on the go.
+•	Focus Music (Powered by Brain.fm): Integrate your learning with scientifically designed focus music. Choose from a selection of Brain.fm tracks directly within the Sensa Learn portal to help improve concentration and block out distractions.
+Track Your Progress & Stay Motivated (NEW!)
+Sensa Learn includes features to help you visualize your progress and build consistent study habits. You can access your Progress Dashboard from the main Sensa Learn menu.
+•	Progress Dashboard: This is your personal hub for tracking your learning journey. It features:
+o	A visual overview of your course completion.
+o	Your current Learning Streak, showing how many consecutive days you've engaged with your course material.
+o	A showcase of your recently earned Badges.
+•	Learning Streaks: Maintain a streak by completing at least one learning module in Sensa Learn each day. Streaks are a powerful tool for building consistent, effective study habits.
+•	Badges: Earn badges as you reach important milestones. They are a fun way to celebrate your achievements, with awards for things like:
+o	Completing your first chapter.
+o	Mastering a "High-Complexity" topic.
+o	Maintaining a 5-day, 10-day, or even 30-day learning streak!
+Personalizing Your Learning Journey
+The power of Sensa Learn comes from its ability to connect new information to what you already know. To do this effectively, the system needs a little information about you.
+Setting Up Your Learning Profile
+•	During Onboarding: When you first sign up, you'll have an optional step to set your learning preferences.
+•	In Your Profile: You can access and update these settings at any time.
+You can provide:
+•	Age Range & Location: Helps the system choose culturally and generationally relevant analogies.
+•	Interests & Hobbies: A list of topics you're passionate about (e.g., Sports, Technology, Music, Art). This is the key to unlocking highly effective, personalized analogies.
+Your Privacy is Our Priority: This information is used only to improve the quality of your learning analogies. It is never shared and is stored securely.
+FAQ
+Q: Why do you need my age and interests? A: This information allows us to generate analogies that are genuinely relatable to you. An analogy that works for a history enthusiast in their 40s might be different from one that works for a 19-year-old gamer. Personalization makes learning more intuitive.
+Q: What is a "Learning Mantra"? A: A Learning Mantra is a short, memorable acronym or phrase automatically generated from the key ideas in an analogy. It acts as a mental shortcut to help you quickly recall complex information, especially when studying for an exam.
+Q: What are the audio and music features for? A: The Audio Narration feature caters to auditory learners and allows for hands-free revision. The integrated Focus Music from Brain.fm is scientifically designed to help you concentrate, reduce distraction, and improve knowledge retention during your study sessions.
+Q: What are Streaks and Badges? A: Streaks track how many consecutive days you use Sensa Learn, helping you build a consistent study habit. Badges are rewards you earn for reaching learning milestones, like completing all the chapters in a course or maintaining a long streak. They are a fun way to celebrate your progress!
+Q: Can I use Sensa Learn without personalizing my profile? A: Yes. You will still receive high-quality, general analogies and have access to all the immersive features. However, for the most effective and memorable learning experience, we highly recommend personalizing your profile.
+

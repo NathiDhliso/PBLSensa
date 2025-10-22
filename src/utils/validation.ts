@@ -1,0 +1,133 @@
+/**
+ * Validation Utilities
+ * 
+ * Zod schemas and validation functions for forms.
+ */
+
+import { z } from 'zod';
+
+/**
+ * Login form validation schema
+ */
+export const loginSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+});
+
+export type LoginFormData = z.infer<typeof loginSchema>;
+
+/**
+ * Registration form validation schema
+ */
+export const registerSchema = z.object({
+  name: z.string().optional(),
+  email: z.string().email('Invalid email address'),
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number')
+    .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ['confirmPassword'],
+});
+
+export type RegisterFormData = z.infer<typeof registerSchema>;
+
+/**
+ * Forgot password form validation schema
+ */
+export const forgotPasswordSchema = z.object({
+  email: z.string().email('Invalid email address'),
+});
+
+export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
+
+/**
+ * Reset password form validation schema
+ */
+export const resetPasswordSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  code: z.string().min(6, 'Verification code must be at least 6 characters'),
+  newPassword: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number')
+    .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
+  confirmPassword: z.string(),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ['confirmPassword'],
+});
+
+export type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
+
+/**
+ * Profile update form validation schema
+ */
+export const profileSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  ageRange: z.string().optional(),
+  location: z.string().optional(),
+  interests: z.array(z.string()).max(10, 'Maximum 10 interests allowed').optional(),
+});
+
+export type ProfileFormData = z.infer<typeof profileSchema>;
+
+/**
+ * Password strength checker
+ * Returns a score from 0-4 and feedback
+ */
+export function checkPasswordStrength(password: string): {
+  score: number;
+  feedback: string;
+  color: string;
+} {
+  let score = 0;
+  
+  if (password.length >= 8) score++;
+  if (password.length >= 12) score++;
+  if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score++;
+  if (/[0-9]/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+
+  const strengthMap = {
+    0: { feedback: 'Very weak', color: 'bg-red-500' },
+    1: { feedback: 'Weak', color: 'bg-orange-500' },
+    2: { feedback: 'Fair', color: 'bg-yellow-500' },
+    3: { feedback: 'Good', color: 'bg-blue-500' },
+    4: { feedback: 'Strong', color: 'bg-green-500' },
+    5: { feedback: 'Very strong', color: 'bg-green-600' },
+  };
+
+  return {
+    score,
+    ...strengthMap[score as keyof typeof strengthMap],
+  };
+}
+
+/**
+ * Cognito error message mapping
+ */
+export const authErrorMessages: Record<string, string> = {
+  'UserNotFoundException': 'No account found with this email',
+  'NotAuthorizedException': 'Invalid email or password',
+  'UserNotConfirmedException': 'Please verify your email before logging in',
+  'CodeMismatchException': 'Invalid verification code',
+  'ExpiredCodeException': 'Verification code has expired',
+  'LimitExceededException': 'Too many attempts. Please try again later',
+  'UsernameExistsException': 'An account with this email already exists',
+  'InvalidPasswordException': 'Password does not meet requirements',
+  'InvalidParameterException': 'Invalid input. Please check your information',
+};
+
+/**
+ * Get user-friendly error message from Cognito error
+ */
+export function getAuthErrorMessage(error: any): string {
+  const errorCode = error.code || error.name;
+  return authErrorMessages[errorCode] || error.message || 'An error occurred. Please try again.';
+}

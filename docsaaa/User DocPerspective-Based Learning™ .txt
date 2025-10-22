@@ -1,0 +1,46 @@
+Perspective-Based Learning™ User Documentation (v2.0)
+What is Perspective-Based Learning?
+Welcome to Perspective-Based Learning, your personal AI study partner. Our system is designed to transform dense course materials—textbooks, lab manuals, and lecture notes—into clear, connected, and personalized study guides. Instead of spending hours trying to decipher what's truly important, our system analyzes everything for you, showing you exactly what to focus on to master your subject and excel in your exams.
+What Does It Do?
+1. Reads Your Materials Like an Expert Tutor When you upload your recommended PDFs, our system performs a deep analysis that goes beyond simple text recognition. It understands the structure, hierarchy, and organization of the content across all your documents to grasp the full context.
+2. Extracts the Most Important Keywords The system automatically identifies and highlights the foundational building blocks of your course:
+•	Essential Terminology: Key terms you must memorize.
+•	Core Concepts: Ideas that appear repeatedly across chapters.
+•	Critical Definitions: The foundational principles of the subject.
+3. Creates Interactive, Multi-Layered Concept Maps This is the core of the experience. We generate a dynamic diagram showing how every key idea connects. You can use the powerful zoom-in feature to explore any chapter or section in detail, giving you both a bird's-eye view and a microscopic focus.
+4. Validates Against Past Exams (Optional) If you upload a past exam, the system cross-references it with your course materials. Keywords and concepts with high exam relevance will be visually prioritized in your study guide (e.g., appearing larger or highlighted), making your study sessions incredibly efficient and targeted.
+5. Synthesizes Your Entire Course into One Unified View (NEW!) This is our most powerful feature yet. You can now group multiple documents into a single Course. The system will:
+•	Merge all materials into one unified, interactive concept map.
+•	Identify hidden connections between your textbook and lecture notes automatically.
+•	Flag conflicts if it finds contradictory information. When a conflict is found, you'll see a side-by-side comparison and an AI recommendation, giving you full control to resolve it.
+A Guide to Your Interactive Concept Map
+To get the most out of your study guide, it helps to understand the visual language of the map:
+•	Node Types:
+o	Primary Nodes: A solid border indicates the first or most important definition of a concept.
+o	Reference Nodes: A dotted border shows you where a concept is mentioned again in other chapters, linking back to its primary definition without cluttering the map.
+•	Edge (Connection) Styles:
+o	Solid Lines: Represent relationships within the same chapter.
+o	Dashed Lines: Highlight valuable cross-chapter connections, pointing to overarching themes that are often critical for final exams.
+•	Exam Relevance:
+o	Keywords with high exam relevance will appear larger or with a subtle glow, drawing your attention to the most important topics.
+How to Use It
+Step 1: Create a Course & Upload Your Documents First, create a "Course" and give it a name (e.g., "BIOL-101"). Then, click "Upload Document" to add all your relevant PDFs to that course.
+Note: Password-protected PDFs cannot be processed. Please unlock the file before uploading.
+Step 2: Wait for Processing Processing typically takes 1-2 minutes depending on document size and complexity. Our advanced analysis ensures the highest quality results.
+Pro tip: If another student has already uploaded the same textbook (same edition), your results will be generated much faster from our cache!
+Step 3: Explore Your Unified Study Guide You’ll receive a powerful, multi-faceted study tool:
+•	A. Course Concept Map (Merged View): Your primary study tool. See the big picture and all connections across every document in your course.
+•	B. Single-Document Concept Map: The traditional view for just one textbook.
+•	C. Chapter/Section Concept Map (Zoom-In View): Ideal for focused study sessions before a quiz on a specific chapter.
+•	D. Keywords by Chapter/Section: A quick-reference list of essential terms.
+Step 4: Validate & Customize (Recommended) We encourage you to use your expertise to refine the results by marking incorrect keywords, adding terms, or resolving flagged conflicts. Your feedback is invaluable; when enough users flag an error, our system learns from it and can even trigger a re-analysis of the document to improve the map for everyone.
+Privacy & Data Security
+•	Your uploads and annotations are private to you.
+•	Cached concept maps are indexed only by a document's anonymous hash, not personal data.
+•	You have the right to request the full deletion of your account and all associated data at any time.
+FAQ
+Q: How do I combine multiple textbooks for one course? A: Use the "Courses" feature! Create a new course, give it a name like "CHEM-201," and upload all relevant documents to it. The system will automatically generate a merged concept map for you.
+Q: What happens if two of my textbooks have conflicting information? A: The system will flag these conflicts for you in the Course view. You'll see the information from both sources and receive an AI-powered recommendation to help you resolve the discrepancy.
+Q: What happens to the feedback I provide? A: Your feedback helps train our AI. When multiple users flag the same issue, it signals a high-priority area for review and can trigger an automatic re-analysis of the document to correct the master concept map for all users.
+Q: My document is taking over a minute to process, is that normal? A: Yes. For large or complex documents, our system performs a deeper analysis to ensure the highest quality and accuracy, which can take 1-2 minutes.
+
