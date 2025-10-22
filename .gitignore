@@ -1,38 +1,200 @@
-# Dependencies
+# ============================================================================
+# Node.js / Frontend
+# ============================================================================
 node_modules/
 .pnp
 .pnp.js
-
-# Testing
-coverage/
-
-# Production
-dist/
-build/
-
-# Environment variables
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Editor directories and files
+# Testing
+coverage/
+
+# Production builds
+dist/
+build/
+
+# Vite
+.vite/
+
+# ============================================================================
+# Environment Variables & Secrets
+# ============================================================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+
+# AWS Credentials
+.aws/
+aws-credentials.json
+
+# API Keys
+**/api-keys.json
+**/secrets.json
+
+# ============================================================================
+# Terraform
+# ============================================================================
+# Local .terraform directories
+**/.terraform/*
+
+# Terraform state files
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Terraform variable files (may contain sensitive data)
+*.tfvars.local
+terraform.tfvars.local
+secrets.tfvars
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Terraform lock file (optional - some teams commit this)
+# .terraform.lock.hcl
+
+# Terraform plan output
+*.tfplan
+
+# Terraform CLI configuration
+.terraformrc
+terraform.rc
+
+# ============================================================================
+# Python / Backend
+# ============================================================================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+backend/venv/
+backend/env/
+
+# Python distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# Flask
+instance/
+.webassets-cache
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# ============================================================================
+# AWS / Lambda
+# ============================================================================
+# Lambda deployment packages
+*.zip
+!lambda_placeholder.zip
+
+# AWS SAM
+.aws-sam/
+
+# ============================================================================
+# Database
+# ============================================================================
+*.db
+*.sqlite
+*.sqlite3
+
+# PostgreSQL
+*.dump
+*.sql.backup
+
+# ============================================================================
+# Logs
+# ============================================================================
+logs/
+*.log
+
+# ============================================================================
+# OS Files
+# ============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ============================================================================
+# Editor / IDE
+# ============================================================================
 .vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
 
-# Vite
-.vite/
+# ============================================================================
+# Temporary Files
+# ============================================================================
+tmp/
+temp/
+*.tmp
+*.bak
+*.cache
+
+# ============================================================================
+# Documentation (optional - uncomment if you don't want to track)
+# ============================================================================
+# *.pdf
+# *.docx
