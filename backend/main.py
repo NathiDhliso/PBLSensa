@@ -369,21 +369,8 @@ async def get_user_profile(user_id: str):
     
     return users_db[user_id]
 
-@app.patch("/api/users/{user_id}/profile", response_model=UserProfile)
-@app.put("/profile", response_model=UserProfile)
-async def update_user_profile(
-    user_id: str = Query(None, description="User ID (required for /profile endpoint)"),
-    updates: UpdateProfileRequest = None
-):
-    """
-    Update user profile
-    
-    Endpoints:
-    - PATCH /api/users/{user_id}/profile
-    - PUT /profile (requires user_id query parameter)
-    """
-    if user_id is None:
-        raise HTTPException(status_code=400, detail="user_id is required")
+def _update_profile_logic(user_id: str, updates: UpdateProfileRequest) -> UserProfile:
+    """Shared logic for updating user profile"""
     # Get or create profile
     if user_id not in users_db:
         now = datetime.now().isoformat()
@@ -433,6 +420,19 @@ async def update_user_profile(
     users_db[user_id] = profile
     
     return profile
+
+@app.patch("/api/users/{user_id}/profile", response_model=UserProfile)
+async def update_user_profile(user_id: str, updates: UpdateProfileRequest):
+    """Update user profile (path parameter version)"""
+    return _update_profile_logic(user_id, updates)
+
+@app.put("/profile", response_model=UserProfile)
+async def update_profile_alt(
+    user_id: str = Query(..., description="User ID"),
+    updates: UpdateProfileRequest = None
+):
+    """Update user profile (query parameter version for /profile endpoint)"""
+    return _update_profile_logic(user_id, updates)
 
 # Analogy Generation Endpoints
 @app.post("/api/chapters/{chapter_id}/generate-analogies", response_model=AnalogyGenerationResponse)
@@ -648,22 +648,15 @@ async def get_chapter_complexity(chapter_id: str):
     return complexity_info
 
 
-@app.post("/api/analogies/{analogy_id}/feedback", response_model=FeedbackResponse)
-@app.post("/feedback/analogy", response_model=FeedbackResponse)
-async def submit_analogy_feedback(
-    analogy_id: str = Query(None, description="Analogy ID"),
-    feedback: FeedbackRequest = None
-):
-    """
-    Submit feedback on an analogy
-    
-    Endpoints:
-    - POST /api/analogies/{analogy_id}/feedback
-    - POST /feedback/analogy (requires analogy_id in request body)
-    """
-    if analogy_id is None and feedback:
-        # For /feedback/analogy endpoint, expect analogy_id in a different format
-        raise HTTPException(status_code=400, detail="analogy_id is required")
+class FeedbackRequestWithAnalogyId(BaseModel):
+    """Feedback request with analogy_id for /feedback/analogy endpoint"""
+    analogy_id: str
+    user_id: str
+    rating: int = Field(ge=1, le=5)
+    comment: Optional[str] = None
+
+def _submit_feedback_logic(analogy_id: str, feedback: FeedbackRequest) -> FeedbackResponse:
+    """Shared logic for submitting feedback"""
     # Validate analogy exists
     if analogy_id not in analogies_db:
         raise HTTPException(status_code=404, detail="Analogy not found")
@@ -685,6 +678,21 @@ async def submit_analogy_feedback(
         feedback_id=feedback_id,
         message="Feedback submitted successfully"
     )
+
+@app.post("/api/analogies/{analogy_id}/feedback", response_model=FeedbackResponse)
+async def submit_analogy_feedback(analogy_id: str, feedback: FeedbackRequest):
+    """Submit feedback on an analogy (path parameter version)"""
+    return _submit_feedback_logic(analogy_id, feedback)
+
+@app.post("/feedback/analogy", response_model=FeedbackResponse)
+async def submit_feedback_alt(feedback: FeedbackRequestWithAnalogyId):
+    """Submit feedback on an analogy (body parameter version for /feedback/analogy endpoint)"""
+    feedback_request = FeedbackRequest(
+        user_id=feedback.user_id,
+        rating=feedback.rating,
+        comment=feedback.comment
+    )
+    return _submit_feedback_logic(feedback.analogy_id, feedback_request)
 
 
 @app.get("/api/analogies/{analogy_id}/feedback", response_model=FeedbackSummary)
