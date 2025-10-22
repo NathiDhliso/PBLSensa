@@ -370,8 +370,20 @@ async def get_user_profile(user_id: str):
     return users_db[user_id]
 
 @app.patch("/api/users/{user_id}/profile", response_model=UserProfile)
-async def update_user_profile(user_id: str, updates: UpdateProfileRequest):
-    """Update user profile"""
+@app.put("/profile", response_model=UserProfile)
+async def update_user_profile(
+    user_id: str = Query(None, description="User ID (required for /profile endpoint)"),
+    updates: UpdateProfileRequest = None
+):
+    """
+    Update user profile
+    
+    Endpoints:
+    - PATCH /api/users/{user_id}/profile
+    - PUT /profile (requires user_id query parameter)
+    """
+    if user_id is None:
+        raise HTTPException(status_code=400, detail="user_id is required")
     # Get or create profile
     if user_id not in users_db:
         now = datetime.now().isoformat()
@@ -424,6 +436,7 @@ async def update_user_profile(user_id: str, updates: UpdateProfileRequest):
 
 # Analogy Generation Endpoints
 @app.post("/api/chapters/{chapter_id}/generate-analogies", response_model=AnalogyGenerationResponse)
+@app.post("/sensa-learn/chapter/{chapter_id}/analogies", response_model=AnalogyGenerationResponse)
 async def generate_chapter_analogies(
     chapter_id: str,
     user_id: str = Query(..., description="User ID requesting analogies"),
@@ -434,6 +447,10 @@ async def generate_chapter_analogies(
     
     This endpoint generates AI-powered analogies, memory techniques, and learning mantras
     tailored to the user's interests and learning style.
+    
+    Endpoints:
+    - POST /api/chapters/{chapter_id}/generate-analogies
+    - POST /sensa-learn/chapter/{chapter_id}/analogies (alias)
     """
     # Check rate limit
     rate_limit_info = rate_limiter.check_user_limit(user_id)
@@ -567,11 +584,18 @@ async def generate_chapter_analogies(
 
 
 @app.get("/api/chapters/{chapter_id}/analogies", response_model=AnalogyGenerationResponse)
+@app.get("/sensa-learn/chapter/{chapter_id}/analogies", response_model=AnalogyGenerationResponse)
 async def get_chapter_analogies(
     chapter_id: str,
     user_id: str = Query(..., description="User ID")
 ):
-    """Get cached analogies for a chapter"""
+    """
+    Get cached analogies for a chapter
+    
+    Endpoints:
+    - GET /api/chapters/{chapter_id}/analogies
+    - GET /sensa-learn/chapter/{chapter_id}/analogies (alias)
+    """
     # Get user profile
     if user_id not in users_db:
         raise HTTPException(status_code=404, detail="User profile not found")
@@ -593,8 +617,15 @@ async def get_chapter_analogies(
 
 
 @app.get("/api/chapters/{chapter_id}/complexity", response_model=ComplexityInfo)
+@app.get("/sensa-learn/chapter/{chapter_id}/summary", response_model=ComplexityInfo)
 async def get_chapter_complexity(chapter_id: str):
-    """Get complexity score and breakdown for a chapter"""
+    """
+    Get complexity score and breakdown for a chapter
+    
+    Endpoints:
+    - GET /api/chapters/{chapter_id}/complexity
+    - GET /sensa-learn/chapter/{chapter_id}/summary (alias for concept summarization)
+    """
     # Check if we have cached complexity
     if chapter_id in complexity_db:
         return ComplexityInfo(**complexity_db[chapter_id])
@@ -618,8 +649,21 @@ async def get_chapter_complexity(chapter_id: str):
 
 
 @app.post("/api/analogies/{analogy_id}/feedback", response_model=FeedbackResponse)
-async def submit_analogy_feedback(analogy_id: str, feedback: FeedbackRequest):
-    """Submit feedback on an analogy"""
+@app.post("/feedback/analogy", response_model=FeedbackResponse)
+async def submit_analogy_feedback(
+    analogy_id: str = Query(None, description="Analogy ID"),
+    feedback: FeedbackRequest = None
+):
+    """
+    Submit feedback on an analogy
+    
+    Endpoints:
+    - POST /api/analogies/{analogy_id}/feedback
+    - POST /feedback/analogy (requires analogy_id in request body)
+    """
+    if analogy_id is None and feedback:
+        # For /feedback/analogy endpoint, expect analogy_id in a different format
+        raise HTTPException(status_code=400, detail="analogy_id is required")
     # Validate analogy exists
     if analogy_id not in analogies_db:
         raise HTTPException(status_code=404, detail="Analogy not found")
