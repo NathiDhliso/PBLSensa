@@ -72,7 +72,10 @@ export const profileSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   ageRange: z.string().optional(),
   location: z.string().optional(),
-  interests: z.array(z.string()).max(10, 'Maximum 10 interests allowed').optional(),
+  interests: z.array(z.string()).max(20, 'Maximum 20 interests allowed').optional(),
+  learningStyle: z.enum(['visual', 'auditory', 'kinesthetic', 'reading-writing']).optional(),
+  background: z.string().max(500, 'Background must be less than 500 characters').optional(),
+  educationLevel: z.enum(['high_school', 'undergraduate', 'graduate', 'professional']).optional(),
 });
 
 export type ProfileFormData = z.infer<typeof profileSchema>;

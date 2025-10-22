@@ -10,14 +10,12 @@
                 "cloudformation:Describe*",
                 "cloudformation:Get*",
                 "cloudformation:List*",
-                "cloudwatch:*",
                 "cognito-idp:*",
                 "ec2:*",
                 "ecr:*",
                 "ecs:*",
                 "elasticache:*",
                 "elasticloadbalancing:*",
-                "events:*",
                 "iam:CreateServiceLinkedRole",
                 "iam:GetRole",
                 "iam:PassRole",
@@ -57,26 +55,6 @@
                 "arn:aws:secretsmanager:*:*:secret:pbl/development/*",
                 "arn:aws:sqs:*:*:pbl-development-*",
                 "arn:aws:ssm:*:*:parameter/pbl/development/*"
-            ]
-        },
-        {
-            "Sid": "AllowMLAndServerlessServices",
-            "Effect": "Allow",
-            "Action": [
-                "appconfig:*",
-                "lambda:*",
-                "sagemaker:*",
-                "sns:*",
-                "textract:AnalyzeDocument",
-                "textract:DetectDocumentText"
-            ],
-            "Resource": [
-                "arn:aws:appconfig:*:*:application/*",
-                "arn:aws:appconfig:*:*:deploymentstrategy/*",
-                "arn:aws:lambda:*:*:function:pbl-development-*",
-                "arn:aws:sagemaker:*:*:*",
-                "arn:aws:sns:*:*:pbl-development-*",
-                "*"
             ]
         }
     ]

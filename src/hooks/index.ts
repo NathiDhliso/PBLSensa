@@ -23,6 +23,8 @@ export { useDeleteCourse } from './useDeleteCourse';
 // Sensa Learn hooks
 export { useChapterSummary } from './useChapterSummary';
 export { useChapterAnalogies } from './useChapterAnalogies';
+export { useGenerateAnalogies } from './useGenerateAnalogies';
+export { useAnalogyFeedback } from './useAnalogyFeedback';
+export { useChapterComplexity } from './useChapterComplexity';
 export { useUserProfile } from './useUserProfile';
 export { useUpdateProfile } from './useUpdateProfile';
-export { useAnalogyFeedback } from './useAnalogyFeedback';

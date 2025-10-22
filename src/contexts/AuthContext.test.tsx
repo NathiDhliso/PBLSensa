@@ -48,7 +48,7 @@ describe('AuthContext integration test', () => {
     });
 
     await act(async () => {
-      await result.current.signIn('test@example.com', 'password');
+      await result.current.signIn('test@example.com', 'Test123!');
     });
 
     await waitFor(() => {

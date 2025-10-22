@@ -1,21 +1,23 @@
 /**
- * Chapter Analogies Hook
+ * useChapterAnalogies Hook
  * 
- * React Query hook for fetching personalized analogies
+ * React Query hook for fetching chapter analogies
  */
 
-import { useApi } from './useApi';
-import { sensaService } from '@/services/sensaService';
-import { queryKeys } from '@/config/queryClient';
-import { AnalogyResponse } from '@/types';
+import { useQuery } from '@tanstack/react-query';
+import { analogyService } from '@/services/analogyService';
+import { AnalogyGenerationResponse } from '@/types/analogy';
 
-export function useChapterAnalogies(chapterId: string) {
-  return useApi<AnalogyResponse[]>(
-    queryKeys.chapters.analogies(chapterId),
-    () => sensaService.getChapterAnalogies(chapterId),
-    {
-      enabled: !!chapterId,
-      staleTime: 10 * 60 * 1000, // 10 minutes
-    }
-  );
+export function useChapterAnalogies(
+  chapterId: string,
+  userId: string,
+  enabled: boolean = true
+) {
+  return useQuery<AnalogyGenerationResponse, Error>({
+    queryKey: ['analogies', chapterId, userId],
+    queryFn: () => analogyService.getAnalogies(chapterId, userId),
+    enabled: enabled && !!chapterId && !!userId,
+    staleTime: 1000 * 60 * 30, // 30 minutes
+    retry: 1,
+  });
 }

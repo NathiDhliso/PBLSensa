@@ -3,19 +3,31 @@ PBL Backend API - Local Development Server
 FastAPI application for Perspective-Based Learning platform
 """
 
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import List, Optional
+from pydantic import BaseModel, Field
+from typing import List, Optional, Dict
 from datetime import datetime
 import uuid
+import asyncio
+
+# Import services
+from services.analogy_generator import MockAnalogyGenerator
+from services.content_analyzer import ChapterContentAnalyzer
+from services.cache_manager import CacheManager
+from services.rate_limiter import RateLimiter
+from services.cost_tracker import CostTracker
 
 app = FastAPI(title="PBL API", version="1.0.0")
 
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:5175",  # Vite alternate port
+        "http://localhost:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -25,6 +37,17 @@ app.add_middleware(
 courses_db = {}
 documents_db = {}
 concept_maps_db = {}
+users_db = {}  # User profiles storage
+analogies_db = {}  # Analogies storage
+complexity_db = {}  # Chapter complexity storage
+feedback_db = {}  # Analogy feedback storage
+
+# Initialize services
+analogy_generator = MockAnalogyGenerator()
+content_analyzer = ChapterContentAnalyzer()
+cache_manager = CacheManager(cache_duration_days=30)
+rate_limiter = RateLimiter(daily_limit=10)
+cost_tracker = CostTracker(daily_threshold_usd=50.0)
 
 # Models
 class Course(BaseModel):
@@ -53,6 +76,79 @@ class ConceptMap(BaseModel):
     document_id: Optional[str] = None
     concepts: List[dict]
     relationships: List[dict]
+
+# Profile Models
+class UserProfile(BaseModel):
+    user_id: str
+    email: str
+    name: str
+    age_range: Optional[str] = None
+    location: Optional[str] = None
+    interests: List[str] = []
+    learning_style: Optional[str] = None
+    background: Optional[str] = None
+    education_level: Optional[str] = None
+    created_at: str
+    updated_at: str
+
+class UpdateProfileRequest(BaseModel):
+    name: Optional[str] = None
+    age_range: Optional[str] = None
+    location: Optional[str] = None
+    interests: Optional[List[str]] = None
+    learning_style: Optional[str] = None
+    background: Optional[str] = None
+    education_level: Optional[str] = None
+
+# Analogy Models
+class AnalogyResponse(BaseModel):
+    id: str
+    concept: str
+    analogy_text: str
+    based_on_interest: str
+    learning_style_adaptation: str
+    average_rating: Optional[float] = None
+    rating_count: int = 0
+
+class MemoryTechniqueResponse(BaseModel):
+    id: str
+    technique_type: str
+    technique_text: str
+    application: str
+
+class LearningMantraResponse(BaseModel):
+    id: str
+    mantra_text: str
+    explanation: str
+
+class ComplexityInfo(BaseModel):
+    score: float
+    level: str  # beginner, intermediate, advanced
+    concept_count: int
+    estimated_study_time: int  # minutes
+
+class AnalogyGenerationResponse(BaseModel):
+    analogies: List[AnalogyResponse]
+    memory_techniques: List[MemoryTechniqueResponse]
+    learning_mantras: List[LearningMantraResponse]
+    complexity: ComplexityInfo
+    cached: bool
+    generated_at: str
+
+class FeedbackRequest(BaseModel):
+    user_id: str
+    rating: int = Field(ge=1, le=5)
+    comment: Optional[str] = None
+
+class FeedbackResponse(BaseModel):
+    feedback_id: str
+    message: str
+
+class FeedbackSummary(BaseModel):
+    analogy_id: str
+    average_rating: float
+    rating_count: int
+    rating_distribution: Dict[int, int]
 
 # Health check
 @app.get("/health")
@@ -252,6 +348,333 @@ async def get_document_concept_map(document_id: str):
         ],
         "relationships": []
     }
+
+# Profile endpoints
+@app.get("/api/users/{user_id}/profile", response_model=UserProfile)
+async def get_user_profile(user_id: str):
+    """Get user profile"""
+    if user_id not in users_db:
+        # Create default profile if doesn't exist
+        now = datetime.now().isoformat()
+        default_profile = UserProfile(
+            user_id=user_id,
+            email=f"user{user_id}@example.com",
+            name=f"User {user_id}",
+            interests=[],
+            created_at=now,
+            updated_at=now
+        )
+        users_db[user_id] = default_profile
+        return default_profile
+    
+    return users_db[user_id]
+
+@app.patch("/api/users/{user_id}/profile", response_model=UserProfile)
+async def update_user_profile(user_id: str, updates: UpdateProfileRequest):
+    """Update user profile"""
+    # Get or create profile
+    if user_id not in users_db:
+        now = datetime.now().isoformat()
+        profile = UserProfile(
+            user_id=user_id,
+            email=f"user{user_id}@example.com",
+            name=f"User {user_id}",
+            interests=[],
+            created_at=now,
+            updated_at=now
+        )
+        users_db[user_id] = profile
+    else:
+        profile = users_db[user_id]
+    
+    # Validate learning_style if provided
+    if updates.learning_style is not None:
+        valid_styles = ['visual', 'auditory', 'kinesthetic', 'reading-writing']
+        if updates.learning_style not in valid_styles:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid learning_style. Must be one of: {', '.join(valid_styles)}"
+            )
+    
+    # Validate education_level if provided
+    if updates.education_level is not None:
+        valid_levels = ['high_school', 'undergraduate', 'graduate', 'professional']
+        if updates.education_level not in valid_levels:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid education_level. Must be one of: {', '.join(valid_levels)}"
+            )
+    
+    # Validate interests array length
+    if updates.interests is not None and len(updates.interests) > 20:
+        raise HTTPException(
+            status_code=400,
+            detail="Maximum 20 interests allowed"
+        )
+    
+    # Update fields
+    update_data = updates.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(profile, field, value)
+    
+    profile.updated_at = datetime.now().isoformat()
+    users_db[user_id] = profile
+    
+    return profile
+
+# Analogy Generation Endpoints
+@app.post("/api/chapters/{chapter_id}/generate-analogies", response_model=AnalogyGenerationResponse)
+async def generate_chapter_analogies(
+    chapter_id: str,
+    user_id: str = Query(..., description="User ID requesting analogies"),
+    force_regenerate: bool = Query(False, description="Force regeneration even if cached")
+):
+    """
+    Generate or retrieve personalized analogies for a chapter
+    
+    This endpoint generates AI-powered analogies, memory techniques, and learning mantras
+    tailored to the user's interests and learning style.
+    """
+    # Check rate limit
+    rate_limit_info = rate_limiter.check_user_limit(user_id)
+    if rate_limit_info.is_limited and not force_regenerate:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "message": f"Daily generation limit ({rate_limit_info.limit}) exceeded",
+                "reset_at": rate_limit_info.reset_at.isoformat(),
+                "remaining": rate_limit_info.remaining
+            }
+        )
+    
+    # Get user profile
+    if user_id not in users_db:
+        raise HTTPException(status_code=404, detail="User profile not found")
+    
+    user_profile = users_db[user_id]
+    
+    # Generate cache key
+    cache_key = cache_manager.generate_cache_key(chapter_id, user_profile.dict())
+    
+    # Check cache unless force_regenerate
+    if not force_regenerate:
+        cached_data = cache_manager.get_cached_analogies(cache_key)
+        if cached_data:
+            return AnalogyGenerationResponse(**cached_data, cached=True)
+    
+    # Mock chapter content (in production, query from database)
+    chapter_content = {
+        'chapter_id': chapter_id,
+        'chapter_title': f'Chapter {chapter_id}',
+        'text_content': 'Sample chapter content about key concepts...',
+        'key_concepts': ['concept1', 'concept2', 'concept3'],
+        'complexity_score': 0.6,
+        'word_count': 1500,
+        'estimated_reading_time': 8
+    }
+    
+    # Generate analogies
+    try:
+        result = await analogy_generator.generate_analogies(
+            chapter_content=chapter_content,
+            user_profile=user_profile.dict(),
+            num_analogies=3
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate analogies: {str(e)}")
+    
+    # Increment rate limit counter
+    rate_limiter.increment_user_count(user_id)
+    
+    # Track costs (mock generator returns 0 cost)
+    if result.generation_cost_usd > 0:
+        cost_tracker.log_bedrock_call(
+            model_id="mock",
+            prompt_tokens=result.prompt_tokens,
+            completion_tokens=result.completion_tokens,
+            user_id=user_id,
+            chapter_id=chapter_id
+        )
+    
+    # Convert to response format
+    analogies_response = []
+    for i, analogy in enumerate(result.analogies):
+        analogy_id = f"analogy-{chapter_id}-{i}"
+        analogies_response.append(AnalogyResponse(
+            id=analogy_id,
+            concept=analogy.concept,
+            analogy_text=analogy.analogy_text,
+            based_on_interest=analogy.based_on_interest,
+            learning_style_adaptation=analogy.learning_style_adaptation,
+            average_rating=None,
+            rating_count=0
+        ))
+        # Store in database
+        analogies_db[analogy_id] = {
+            'chapter_id': chapter_id,
+            'user_id': user_id,
+            **analogy.__dict__
+        }
+    
+    memory_techniques_response = []
+    for i, mt in enumerate(result.memory_techniques):
+        mt_id = f"mt-{chapter_id}-{i}"
+        memory_techniques_response.append(MemoryTechniqueResponse(
+            id=mt_id,
+            technique_type=mt.technique_type,
+            technique_text=mt.technique_text,
+            application=mt.application
+        ))
+    
+    learning_mantras_response = []
+    for i, lm in enumerate(result.learning_mantras):
+        lm_id = f"lm-{chapter_id}-{i}"
+        learning_mantras_response.append(LearningMantraResponse(
+            id=lm_id,
+            mantra_text=lm.mantra_text,
+            explanation=lm.explanation
+        ))
+    
+    complexity_info = ComplexityInfo(
+        score=chapter_content['complexity_score'],
+        level=content_analyzer.get_complexity_level(chapter_content['complexity_score']),
+        concept_count=len(chapter_content['key_concepts']),
+        estimated_study_time=chapter_content['estimated_reading_time']
+    )
+    
+    response_data = {
+        'analogies': [a.dict() for a in analogies_response],
+        'memory_techniques': [mt.dict() for mt in memory_techniques_response],
+        'learning_mantras': [lm.dict() for lm in learning_mantras_response],
+        'complexity': complexity_info.dict(),
+        'cached': False,
+        'generated_at': datetime.now().isoformat()
+    }
+    
+    # Cache the result
+    cache_manager.store_analogies(
+        cache_key=cache_key,
+        data=response_data,
+        metadata={
+            'model_version': 'mock-v1',
+            'prompt_tokens': result.prompt_tokens,
+            'completion_tokens': result.completion_tokens,
+            'cost_usd': result.generation_cost_usd
+        }
+    )
+    
+    return AnalogyGenerationResponse(**response_data)
+
+
+@app.get("/api/chapters/{chapter_id}/analogies", response_model=AnalogyGenerationResponse)
+async def get_chapter_analogies(
+    chapter_id: str,
+    user_id: str = Query(..., description="User ID")
+):
+    """Get cached analogies for a chapter"""
+    # Get user profile
+    if user_id not in users_db:
+        raise HTTPException(status_code=404, detail="User profile not found")
+    
+    user_profile = users_db[user_id]
+    
+    # Generate cache key
+    cache_key = cache_manager.generate_cache_key(chapter_id, user_profile.dict())
+    
+    # Get from cache
+    cached_data = cache_manager.get_cached_analogies(cache_key)
+    if not cached_data:
+        raise HTTPException(
+            status_code=404,
+            detail="No analogies found. Generate them first using POST /api/chapters/{chapter_id}/generate-analogies"
+        )
+    
+    return AnalogyGenerationResponse(**cached_data, cached=True)
+
+
+@app.get("/api/chapters/{chapter_id}/complexity", response_model=ComplexityInfo)
+async def get_chapter_complexity(chapter_id: str):
+    """Get complexity score and breakdown for a chapter"""
+    # Check if we have cached complexity
+    if chapter_id in complexity_db:
+        return ComplexityInfo(**complexity_db[chapter_id])
+    
+    # Mock complexity calculation (in production, query from database)
+    complexity_score = 0.6
+    concept_count = 5
+    estimated_time = 8
+    
+    complexity_info = ComplexityInfo(
+        score=complexity_score,
+        level=content_analyzer.get_complexity_level(complexity_score),
+        concept_count=concept_count,
+        estimated_study_time=estimated_time
+    )
+    
+    # Cache it
+    complexity_db[chapter_id] = complexity_info.dict()
+    
+    return complexity_info
+
+
+@app.post("/api/analogies/{analogy_id}/feedback", response_model=FeedbackResponse)
+async def submit_analogy_feedback(analogy_id: str, feedback: FeedbackRequest):
+    """Submit feedback on an analogy"""
+    # Validate analogy exists
+    if analogy_id not in analogies_db:
+        raise HTTPException(status_code=404, detail="Analogy not found")
+    
+    # Store feedback
+    feedback_id = str(uuid.uuid4())
+    feedback_key = f"{analogy_id}:{feedback.user_id}"
+    
+    feedback_db[feedback_key] = {
+        'id': feedback_id,
+        'analogy_id': analogy_id,
+        'user_id': feedback.user_id,
+        'rating': feedback.rating,
+        'comment': feedback.comment,
+        'created_at': datetime.now().isoformat()
+    }
+    
+    return FeedbackResponse(
+        feedback_id=feedback_id,
+        message="Feedback submitted successfully"
+    )
+
+
+@app.get("/api/analogies/{analogy_id}/feedback", response_model=FeedbackSummary)
+async def get_analogy_feedback(analogy_id: str):
+    """Get aggregated feedback for an analogy"""
+    # Get all feedback for this analogy
+    analogy_feedback = [
+        fb for key, fb in feedback_db.items()
+        if fb['analogy_id'] == analogy_id
+    ]
+    
+    if not analogy_feedback:
+        return FeedbackSummary(
+            analogy_id=analogy_id,
+            average_rating=0.0,
+            rating_count=0,
+            rating_distribution={1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+        )
+    
+    # Calculate statistics
+    ratings = [fb['rating'] for fb in analogy_feedback]
+    average_rating = sum(ratings) / len(ratings)
+    
+    rating_distribution = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+    for rating in ratings:
+        rating_distribution[rating] += 1
+    
+    return FeedbackSummary(
+        analogy_id=analogy_id,
+        average_rating=average_rating,
+        rating_count=len(ratings),
+        rating_distribution=rating_distribution
+    )
+
 
 # Feedback endpoint
 @app.post("/feedback")

@@ -27,6 +27,7 @@ export function ProfileSetupPage() {
     userId: user?.userId || '',
     email: user?.email || '',
     name: user?.username || '',
+    interests: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };

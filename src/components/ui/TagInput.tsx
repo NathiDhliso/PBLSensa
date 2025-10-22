@@ -15,6 +15,7 @@ export interface TagInputProps {
   maxTags?: number;
   placeholder?: string;
   error?: string;
+  helperText?: string;
   required?: boolean;
 }
 
@@ -26,6 +27,7 @@ export function TagInput({
   maxTags = 10,
   placeholder = 'Type and press Enter',
   error,
+  helperText,
   required,
 }: TagInputProps) {
   const [inputValue, setInputValue] = useState('');
@@ -154,6 +156,12 @@ export function TagInput({
           className="mt-1 text-sm text-red-600 dark:text-red-400"
         >
           {error}
+        </p>
+      )}
+      
+      {!error && helperText && (
+        <p className="mt-1 text-sm text-text-medium dark:text-dark-text-secondary">
+          {helperText}
         </p>
       )}
     </div>
