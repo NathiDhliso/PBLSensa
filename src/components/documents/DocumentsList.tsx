@@ -1,4 +1,3 @@
-import React from 'react';
 import { Plus } from 'lucide-react';
 import { useCourseDocuments } from '../../hooks';
 import { Button } from '../ui/Button';
@@ -10,7 +9,7 @@ interface DocumentsListProps {
   onUploadClick: () => void;
 }
 
-export const DocumentsList: React.FC<DocumentsListProps> = ({ courseId, onUploadClick }) => {
+export const DocumentsList = ({ courseId, onUploadClick }: DocumentsListProps) => {
   const { data: documents, isLoading, error } = useCourseDocuments(courseId);
 
   if (isLoading) {

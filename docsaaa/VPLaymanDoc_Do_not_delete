@@ -1,0 +1,37 @@
+##  Two-View Learning System
+The goal is to create a two-step learning application. The PBL View builds an objective knowledge foundation from a document, which is then enhanced and personalized in the Sensa Learn View. The system will identify and visualize three core logical structures: Hierarchical, Sequential, and Analogous.
+
+## Part 1: The PBL View (Objective Knowledge Foundation)
+This is where the system deconstructs the source material into factual, logical structures.
+
+A. Knowledge Extraction
+Upload & Analyze: When a PDF is uploaded, the AI extracts key domain-specific concepts and their contextual definitions directly from the text.
+
+Display Concepts: The extracted concepts are listed in a navigable hierarchical tree structure for user review.
+
+B. Hybrid Visualization Engine
+The system will identify two types of structures within the text and allow the user to visualize them in a combined, hybrid map:
+
+Hierarchical Structure: Represents classifications, components, and "is-a" relationships.
+
+Diagram Styles: Tree Diagrams, Mind Maps.
+
+Sequential Structure: Represents processes, workflows, and step-by-step instructions.
+
+Diagram Styles: Process Flowcharts, Swimlane Diagrams.
+
+The user can apply different styles to different parts of the map, creating a single, logical diagram (e.g., a hierarchical tree of user types that branches into a sequential flowchart for creating a user).
+
+C. Full User Control
+The generated map must be fully editable, allowing the user to zoom, delete nodes, and add or modify connections.
+
+## Part 2: The Sensa Learn View (Personalized Enhancement)
+This is where objective knowledge is connected to the user's personal experience.
+
+A. The Analogous Structure
+This third logical structure is the user's unique personal knowledge model, built from their memories, experiences, and intuition.
+
+B. Building the Connection
+The system takes the Hierarchical and Sequential structures from the PBL View and enhances them by creating connections to the user's Analogous structure.
+
+This link is created using dynamic, metaphorical questionnaires. The AI will ask creative, non-technical questions based on the new concepts to bridge the gap between the document's facts and the user's personal understanding.

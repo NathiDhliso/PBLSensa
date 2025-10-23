@@ -1,0 +1,1723 @@
+# Two-View Learning System: Revised Design Document
+
+## Overview
+
+This document outlines the technical design for a two-view learning system that separates **objective knowledge extraction** (PBL View) from **personalized learning** (Sensa Learn View).
+
+### Core Philosophy
+
+**PBL View**: Extracts and visualizes factual, logical structures from source material
+**Sensa Learn View**: Connects objective knowledge to personal experiences through dynamic analogies
+
+---
+
+## Architecture Principles
+
+1. **View Separation** - PBL and Sensa Learn are architecturally independent
+2. **Structure-First** - Detect logical patterns before visualization
+3. **Dynamic Personalization** - Generate questions per concept, not pre-canned surveys
+4. **Cross-Document Learning** - Build cumulative personal knowledge base
+5. **Full User Control** - Every element is editable and customizable
+
+A challenge for the Sensa Learn view is generating meaningful, personalized questions for a new user whose profile lacks a deep history of experiences and analogies. The initial onboarding provides a baseline, but the first-run experience must be immediately valuable.
+
+Strategy: The system will implement a "Guided First Experience" mode. For the user's first few documents, the AnalogyQuestionGenerator will supplement questions derived from their basic profile with questions from a curated set of universal, high-success metaphorical domains (e.g., topics related to building, cooking, or nature). This ensures robust question generation while the user's personal knowledge base is populated.
+
+### High-Level Flow
+
+```
+Upload → Extract → Detect Structures → PBL Visualization
+                                              ↓
+                User Profile → Generate Questions → Build Analogies → Sensa Learn Visualization
+```
+
+---
+
+## Part 1: PBL View Architecture
+
+### Layer 1: Knowledge Extraction
+
+**Service**: `ConceptExtractor`
+
+
+
+
+**Purpose**: Extract domain-specific concepts with full context preservation
+
+**Process**:
+1. Parse PDF with text and position data
+2. Use Claude 3.5 Sonnet to identify key concepts
+3. Extract contextual definitions from surrounding sentences
+4. Tag each concept with metadata
+
+The ConceptExtractor may initially identify synonyms or abbreviations (e.g., "Virtual Machine" on page 5 and "VM" on page 20) as distinct concepts, leading to redundancy in the knowledge model.
+
+Strategy: To address this, a "Concept Resolution" step will be added to the PBL pipeline following the initial extraction. This step will leverage the vector embeddings stored with each concept to identify pairs with high semantic similarity. These potential duplicates will be flagged and presented to the user for a final merge or alias confirmation, ensuring a clean and accurate conceptual map.
+
+**Data Model**:
+```python
+class Concept:
+    id: str
+    term: str
+    definition: str
+    source_sentences: List[str]
+    page_number: int
+    surrounding_concepts: List[str]  # Context for relationships
+    document_id: str
+    structure_type: str  # "hierarchical", "sequential", "unclassified"
+```
+
+**Extraction Prompt**:
+```python
+prompt = f"""
+Analyze this text and extract key domain concepts.
+
+For each concept, provide:
+1. The exact term
+2. Its definition based on the text
+3. The source sentence(s) that define it
+
+Text: {chunk}
+
+Return as JSON array.
+"""
+```
+
+**Implementation**:
+```python
+# backend/services/concept_extractor.py
+class ConceptExtractor:
+    async def extract_concepts(pdf_path: str) -> List[Concept]:
+        # Parse with position data
+        text_chunks = await self._parse_with_positions(pdf_path)
+        
+        concepts = []
+        for chunk in text_chunks:
+            # Extract with Claude
+            extracted = await self._claude_extract(chunk)
+            
+            # Enrich with metadata
+            for concept in extracted:
+                concept.surrounding_concepts = self._find_nearby_concepts(
+                    concept, text_chunks
+                )
+                
+            concepts.extend(extracted)
+        
+        return concepts
+```
+
+---
+
+### Layer 2: Structure Detection
+
+**Service**: `StructureDetector`
+
+**Purpose**: Classify relationships as Hierarchical or Sequential
+
+**Detection Logic**:
+
+#### Hierarchical Structure Detection
+
+**Patterns**:
+- Keywords: "consists of", "includes", "types of", "categories", "components", "is a"
+- Nested lists with indentation
+- Classification taxonomies
+- Part-whole relationships
+
+**Relationship Types**:
+- `is_a` - "Admin is a type of User"
+- `has_component` - "System has Database"
+- `contains` - "Chapter contains Sections"
+- `category_of` - "Mammals category of Animals"
+
+#### Sequential Structure Detection
+
+**Patterns**:
+- Keywords: "first", "then", "next", "after", "before", "finally", "step", "phase"
+- Numbered instructions
+- Temporal markers
+- Imperative verbs: "create", "configure", "deploy"
+- Cause-effect chains
+
+**Relationship Types**:
+- `precedes` - Step 1 precedes Step 2
+- `enables` - Action A enables Action B
+- `results_in` - Process X results in Outcome Y
+- `follows` - Event B follows Event A
+
+**Implementation**:
+```python
+# backend/services/structure_detector.py
+class StructureDetector:
+    def __init__(self):
+        self.hierarchical_patterns = [
+            r'\b(types? of|categories|consists? of|includes?|components?)\b',
+            r'\b(is a|are|classified as)\b'
+        ]
+        
+        self.sequential_patterns = [
+            r'\b(first|then|next|after|before|finally|step \d+)\b',
+            r'\b(process|procedure|workflow|algorithm)\b'
+        ]
+    
+    async def detect_structures(
+        self, 
+        concepts: List[Concept]
+    ) -> Dict[str, List[Relationship]]:
+        
+        # Pattern matching + Claude validation
+        hierarchical_rels = []
+        sequential_rels = []
+        
+        for i, concept_a in enumerate(concepts):
+            for concept_b in concepts[i+1:]:
+                # Check if concepts appear in same context
+                if self._shares_context(concept_a, concept_b):
+                    # Pattern matching
+                    pattern_type = self._match_patterns(concept_a, concept_b)
+                    
+                    # Claude validation
+                    validated = await self._claude_validate_relationship(
+                        concept_a, 
+                        concept_b, 
+                        pattern_type
+                    )
+                    
+                    if validated.type == "hierarchical":
+                        hierarchical_rels.append(validated)
+                    elif validated.type == "sequential":
+                        sequential_rels.append(validated)
+        
+        return {
+            "hierarchical": hierarchical_rels,
+            "sequential": sequential_rels
+        }
+```
+
+**Claude Validation Prompt**:
+```python
+prompt = f"""
+Determine the relationship between these two concepts:
+
+Concept A: {concept_a.term}
+Definition: {concept_a.definition}
+Context: {concept_a.source_sentences}
+
+Concept B: {concept_b.term}
+Definition: {concept_b.definition}
+Context: {concept_b.source_sentences}
+
+Is this relationship:
+1. HIERARCHICAL (classification, component, category, is-a)
+2. SEQUENTIAL (process step, temporal order, cause-effect)
+3. NONE (unrelated or weak connection)
+
+If related, specify:
+- Relationship type: (is_a, has_component, precedes, enables, etc.)
+- Direction: A→B or B→A
+- Strength: 0.0 to 1.0
+
+Return as JSON.
+"""
+```
+
+---
+
+### Layer 3: PBL Visualization Engine
+
+**Service**: `PBLVisualizationEngine`
+
+**Purpose**: Generate hybrid, editable diagrams
+
+**Diagram Styles Supported**:
+- Tree Diagrams (hierarchical)
+- Mind Maps (hierarchical)
+- Organizational Charts (hierarchical)
+- Process Flowcharts (sequential)
+- Swimlane Diagrams (sequential)
+- Timeline Charts (sequential)
+
+**Hybrid Map Rules**:
+
+1. **Visual Distinction**:
+   - Hierarchical nodes: Blue border, rectangular
+   - Sequential nodes: Green border, rounded
+   - Hybrid connectors: Dashed lines
+
+2. **Connection Rules**:
+   - Hierarchical: Solid lines, parent-child layout
+   - Sequential: Arrows with labels ("Next Step", "Then")
+   - Cross-type: Dashed with labels ("Process for", "Implemented as")
+
+3. **Layout Algorithm**:
+   - Hierarchical: Top-down tree layout
+   - Sequential: Left-to-right flow
+   - Hybrid: Automatic positioning to minimize crossing
+
+**Data Model**:
+```python
+class PBLVisualization:
+    id: str
+    document_id: str
+    nodes: List[DiagramNode]
+    edges: List[DiagramEdge]
+    layout: str  # "tree", "mindmap", "flowchart", "hybrid"
+    
+class DiagramNode:
+    id: str
+    concept_id: str
+    label: str
+    structure_type: str  # "hierarchical" or "sequential"
+    position: Point
+    style: NodeStyle
+    
+class DiagramEdge:
+    id: str
+    source_node_id: str
+    target_node_id: str
+    relationship_type: str
+    label: str
+    style: EdgeStyle
+```
+
+**Frontend Component**:
+```typescript
+// frontend/components/PBLCanvas.tsx
+interface PBLCanvasProps {
+  visualization: PBLVisualization;
+  onNodeEdit: (nodeId: string, changes: Partial<DiagramNode>) => void;
+  onEdgeCreate: (source: string, target: string) => void;
+  onNodeDelete: (nodeId: string) => void;
+  onStyleChange: (layout: string) => void;
+}
+
+const PBLCanvas: React.FC<PBLCanvasProps> = ({
+  visualization,
+  onNodeEdit,
+  onEdgeCreate,
+  onNodeDelete,
+  onStyleChange
+}) => {
+  // React Flow or D3-based implementation
+  // Full editing capabilities
+  // Zoom, pan, drag-and-drop
+  // Style switcher in toolbar
+  // Export options (PNG, PDF, JSON)
+}
+```
+
+---
+
+## Part 2: Sensa Learn View Architecture
+
+### Layer 1: User Profile System
+
+**Service**: `UserProfileService`
+
+**Purpose**: Store cumulative personal knowledge for analogy generation
+
+**Initial Onboarding**:
+```typescript
+// Onboarding captures:
+interface UserProfile {
+  user_id: string;
+  background: {
+    profession: string;
+    education: string[];
+    years_experience: number;
+  };
+  interests: {
+    hobbies: string[];
+    sports: string[];
+    creative_activities: string[];
+  };
+  life_experiences: {
+    places_lived: string[];
+    places_traveled: string[];
+    jobs_held: string[];
+    memorable_events: string[];
+  };
+  learning_style: {
+    preferred_metaphors: string[];  // "sports", "cooking", "nature", etc.
+    past_successful_analogies: string[];
+  };
+}
+```
+
+**Data Storage**:
+```sql
+CREATE TABLE user_profiles (
+    user_id UUID PRIMARY KEY,
+    background_json JSONB,
+    interests_json JSONB,
+    experiences_json JSONB,
+    learning_style_json JSONB,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+```
+
+---
+
+### Layer 2: Dynamic Question Generator
+
+**Service**: `AnalogyQuestionGenerator`
+
+**Purpose**: Create personalized questions per concept based on user profile
+
+**Question Generation Logic**:
+```python
+# backend/services/analogy_question_generator.py
+class AnalogyQuestionGenerator:
+    async def generate_questions(
+        self, 
+        concept: Concept,
+        user_profile: UserProfile,
+        max_questions: int = 3
+    ) -> List[Question]:
+        
+        # Analyze concept characteristics
+        concept_traits = self._analyze_concept(concept)
+        
+        # Match to user's experience domains
+        relevant_domains = self._match_to_user_domains(
+            concept_traits, 
+            user_profile
+        )
+        
+        # Generate with Claude
+        questions = await self._claude_generate_questions(
+            concept=concept,
+            user_profile=user_profile,
+            domains=relevant_domains,
+            max_questions=max_questions
+        )
+        
+        return questions
+```
+
+**Question Types by Structure**:
+
+#### For Hierarchical Concepts:
+```python
+# Template: Experience Mapping
+"Think of a time you organized {items} into groups. 
+How did you decide what belonged where?"
+
+# Template: Metaphorical Bridge
+"If {concept} were a {user_interest}, what would its 
+parts be? (e.g., if it were a sports team, what positions?)"
+
+# Template: Classification Memory
+"In your experience with {user_background}, what are 
+different types of {related_domain}? How do they differ?"
+```
+
+#### For Sequential Concepts:
+```python
+# Template: Process Parallel
+"Describe your process for {user_activity}. What steps 
+do you always follow?"
+
+# Template: Routine Mapping
+"Walk me through a typical {time_period} in your 
+{user_context}. What happens first, then what?"
+
+# Template: Cause-Effect Memory
+"Tell me about a time when doing X led to Y in your 
+{user_experience}. What was the chain of events?"
+```
+
+**Claude Generation Prompt**:
+```python
+prompt = f"""
+Generate 2-3 personalized questions to help the user create an 
+analogy for this concept:
+
+CONCEPT:
+Term: {concept.term}
+Definition: {concept.definition}
+Structure Type: {concept.structure_type}
+
+USER PROFILE:
+Profession: {user_profile.background.profession}
+Hobbies: {", ".join(user_profile.interests.hobbies)}
+Life Experiences: {", ".join(user_profile.life_experiences.memorable_events)}
+
+QUESTION REQUIREMENTS:
+1. Non-technical, conversational language
+2. Reference specific items from the user's profile
+3. Open-ended (not multiple choice)
+4. Help the user connect {concept.term} to their own experience
+5. Match the structure type ({concept.structure_type})
+
+EXAMPLE FOR HIERARCHICAL:
+"In your {hobby}, how do you categorize or organize different {items}?"
+
+EXAMPLE FOR SEQUENTIAL:
+"When you {user_activity}, what's your step-by-step process?"
+
+Generate 2-3 questions as a JSON array.
+"""
+```
+
+---
+
+### Layer 3: Analogy Storage & Management
+
+**Service**: `AnalogyService`
+
+**Data Model**:
+```python
+class Analogy:
+    id: str
+    user_id: str
+    concept_id: str
+    user_experience_text: str  # Free-form answer
+    connection_explanation: str  # How it relates
+    strength: float  # 1-5 user rating
+    type: str  # "metaphor", "experience", "scenario", "emotion"
+    reusable: bool  # Can apply to other docs?
+    tags: List[str]  # "sports", "cooking", "work"
+    created_at: datetime
+    last_used: datetime
+    usage_count: int
+```
+
+**Storage Schema**:
+```sql
+CREATE TABLE analogies (
+    id UUID PRIMARY KEY,
+    user_id UUID REFERENCES users(id),
+    concept_id UUID REFERENCES concepts(id),
+    user_experience_text TEXT NOT NULL,
+    connection_explanation TEXT,
+    strength FLOAT CHECK (strength BETWEEN 1 AND 5),
+    type TEXT CHECK (type IN ('metaphor', 'experience', 'scenario', 'emotion')),
+    reusable BOOLEAN DEFAULT false,
+    tags TEXT[],
+    created_at TIMESTAMP DEFAULT NOW(),
+    last_used TIMESTAMP,
+    usage_count INTEGER DEFAULT 0
+);
+
+CREATE INDEX idx_analogies_user_reusable ON analogies(user_id, reusable) WHERE reusable = true;
+CREATE INDEX idx_analogies_tags ON analogies USING GIN(tags);
+```
+
+**CRUD Operations**:
+```python
+class AnalogyService:
+    async def create_analogy(
+        self, 
+        user_id: str,
+        concept_id: str,
+        experience_text: str,
+        strength: float
+    ) -> Analogy:
+        # Auto-generate connection explanation with Claude
+        connection = await self._generate_connection_explanation(
+            concept_id, 
+            experience_text
+        )
+        
+        # Auto-tag based on content
+        tags = await self._auto_tag(experience_text)
+        
+        analogy = Analogy(
+            user_id=user_id,
+            concept_id=concept_id,
+            user_experience_text=experience_text,
+            connection_explanation=connection,
+            strength=strength,
+            tags=tags
+        )
+        
+        await self._save(analogy)
+        return analogy
+    
+    async def find_reusable_analogies(
+        self, 
+        user_id: str,
+        concept: Concept
+    ) -> List[Analogy]:
+        """Find analogies from past documents that might apply"""
+        
+        # Semantic search using concept embedding
+        similar_analogies = await self._semantic_search(
+            user_id=user_id,
+            query_embedding=concept.embedding,
+            reusable_only=True,
+            limit=5
+        )
+        
+        return similar_analogies
+```
+
+---
+
+### Layer 4: Cross-Document Learning
+
+**Service**: `CrossDocumentLearningService`
+
+**Purpose**: Suggest relevant analogies from user's knowledge base
+
+**Workflow**:
+```python
+class CrossDocumentLearningService:
+    async def suggest_analogies_for_new_concept(
+        self, 
+        user_id: str,
+        new_concept: Concept
+    ) -> List[AnalogyySuggestion]:
+        
+        # 1. Find similar past concepts
+        similar_concepts = await self._find_similar_concepts(
+            user_id, 
+            new_concept
+        )
+        
+        # 2. Get their analogies
+        past_analogies = []
+        for concept in similar_concepts:
+            analogies = await self.analogy_service.get_by_concept(concept.id)
+            past_analogies.extend(analogies)
+        
+        # 3. Rank by relevance
+        ranked = self._rank_analogies(new_concept, past_analogies)
+        
+        # 4. Format suggestions
+        suggestions = [
+            AnalogyySuggestion(
+                analogy=analogy,
+                similarity_score=score,
+                suggestion_text=f"You previously compared {analogy.concept.term} "
+                               f"to {analogy.tags[0]}—might that help here?"
+            )
+            for analogy, score in ranked[:3]
+        ]
+        
+        return suggestions
+```
+
+**Frontend Display**:
+```typescript
+// Show suggestions above question form
+<AnalogysSuggestionPanel>
+  <h3>From Your Past Learning</h3>
+  {suggestions.map(suggestion => (
+    <SuggestionCard
+      key={suggestion.id}
+      analogy={suggestion.analogy}
+      score={suggestion.similarity_score}
+      onApply={() => applyAnalogy(suggestion)}
+      onDismiss={() => dismissSuggestion(suggestion)}
+    >
+      <p>{suggestion.suggestion_text}</p>
+      <blockquote>{suggestion.analogy.user_experience_text}</blockquote>
+    </SuggestionCard>
+  ))}
+</AnalogysSuggestionPanel>
+```
+
+---
+
+### Layer 5: Sensa Learn Visualization
+
+**Service**: `SensaLearnVisualizationEngine`
+
+**Purpose**: Display analogous structure and connections to PBL
+
+**Visualization Options**:
+
+#### Option 1: Side-by-Side View
+```typescript
+<SensaLearnLayout variant="split">
+  <LeftPanel>
+    <PBLMinimap readOnly={true} concepts={pblConcepts} />
+  </LeftPanel>
+  
+  <RightPanel>
+    <AnalogyMap 
+      analogies={userAnalogies}
+      connections={pblConnections}
+    />
+  </RightPanel>
+  
+  <ConnectionOverlay>
+    {connections.map(conn => (
+      <ConnectionLine
+        from={conn.pblNode}
+        to={conn.analogyNode}
+        strength={conn.strength}
+      />
+    ))}
+  </ConnectionOverlay>
+</SensaLearnLayout>
+```
+
+#### Option 2: Integrated Overlay
+```typescript
+<SensaLearnCanvas>
+  {/* PBL nodes in blue */}
+  {pblNodes.map(node => (
+    <PBLNode 
+      key={node.id}
+      data={node}
+      color="blue"
+      interactive={false}
+    />
+  ))}
+  
+  {/* Analogy nodes in warm colors */}
+  {analogyNodes.map(node => (
+    <AnalogyNode
+      key={node.id}
+      data={node}
+      color={getWarmColor(node.strength)}
+      interactive={true}
+      onEdit={() => editAnalogy(node)}
+    />
+  ))}
+  
+  {/* Connection lines */}
+  {connections.map(conn => (
+    <ConnectionEdge
+      key={conn.id}
+      from={conn.source}
+      to={conn.target}
+      style="dashed"
+      label={conn.strength}
+    />
+  ))}
+</SensaLearnCanvas>
+```
+
+#### Option 3: Tabbed Navigation
+```typescript
+<SensaLearnTabs>
+  <Tab label="Objective View">
+    <PBLCanvas readOnly={true} />
+  </Tab>
+  
+  <Tab label="Personal View">
+    <AnalogyCanvas editable={true} />
+  </Tab>
+  
+  <Tab label="Bridge View">
+    <ConnectionsOnlyView 
+      showOnlyLinked={true}
+      highlightStrength={true}
+    />
+  </Tab>
+</SensaLearnTabs>
+```
+
+**Interactive Features**:
+```typescript
+interface SensaLearnInteraction {
+  // Hover interactions
+  onConceptHover: (conceptId: string) => void; // Highlight related analogies
+  onAnalogyHover: (analogyId: string) => void; // Show connected concepts
+  
+  // Click interactions
+  onConceptClick: (conceptId: string) => void; // Show analogy creation form
+  onAnalogyClick: (analogyId: string) => void; // Show edit/strengthen options
+  
+  // Edit operations
+  onAnalogyEdit: (analogyId: string, newText: string) => void;
+  onConnectionStrengthen: (connectionId: string, newStrength: number) => void;
+  onAnalogyyDelete: (analogyId: string) => void;
+  
+  // Creation
+  onNewAnalogyCreate: (conceptId: string) => void; // Open question form
+}
+```
+
+---
+
+## API Endpoints
+
+### PBL View Endpoints
+
+```
+POST /api/pbl/documents/upload
+- Upload PDF and start extraction
+- Returns: { task_id, document_id }
+
+GET /api/pbl/documents/{document_id}/concepts
+- Get all extracted concepts
+- Returns: { concepts: Concept[] }
+
+POST /api/pbl/documents/{document_id}/concepts/validate
+- User validation of extracted concepts
+- Body: { approved: string[], rejected: string[], edited: Concept[] }
+
+GET /api/pbl/documents/{document_id}/structures
+- Get detected hierarchical and sequential structures
+- Returns: { hierarchical: Relationship[], sequential: Relationship[] }
+
+POST /api/pbl/visualizations
+- Create/update PBL visualization
+- Body: { document_id, nodes, edges, layout }
+- Returns: { visualization_id }
+
+GET /api/pbl/visualizations/{visualization_id}
+- Retrieve visualization
+- Returns: PBLVisualization
+
+PUT /api/pbl/visualizations/{visualization_id}/nodes/{node_id}
+- Update node properties
+- Body: Partial<DiagramNode>
+
+POST /api/pbl/visualizations/{visualization_id}/edges
+- Create new connection
+- Body: { source, target, type }
+
+DELETE /api/pbl/visualizations/{visualization_id}/nodes/{node_id}
+- Delete node and its connections
+
+GET /api/pbl/visualizations/{visualization_id}/export
+- Export as PNG, PDF, or JSON
+- Query: ?format=png|pdf|json
+```
+
+### Sensa Learn Endpoints
+
+```
+GET /api/sensa/users/{user_id}/profile
+- Get user profile
+- Returns: UserProfile
+
+PUT /api/sensa/users/{user_id}/profile
+- Update profile
+- Body: Partial<UserProfile>
+
+POST /api/sensa/questions/generate
+- Generate personalized questions for concept
+- Body: { concept_id, user_id, max_questions }
+- Returns: { questions: Question[] }
+
+POST /api/sensa/analogies
+- Create new analogy
+- Body: { concept_id, user_id, experience_text, strength }
+- Returns: Analogy
+
+GET /api/sensa/analogies
+- List user's analogies
+- Query: ?user_id={id}&document_id={id}&reusable=true
+- Returns: { analogies: Analogy[] }
+
+PUT /api/sensa/analogies/{analogy_id}
+- Update analogy
+- Body: Partial<Analogy>
+
+DELETE /api/sensa/analogies/{analogy_id}
+- Delete analogy
+
+GET /api/sensa/analogies/suggest
+- Get reusable analogies for new concept
+- Query: ?user_id={id}&concept_id={id}
+- Returns: { suggestions: AnalogyySuggestion[] }
+
+GET /api/sensa/visualizations/{document_id}
+- Get Sensa Learn visualization data
+- Returns: { pblNodes, analogyNodes, connections }
+
+POST /api/sensa/connections
+- Create/strengthen connection between concept and analogy
+- Body: { concept_id, analogy_id, strength }
+
+GET /api/sensa/analytics/{user_id}
+- Get learning analytics
+- Returns: { most_used_analogies, retention_metrics, connection_density }
+```
+
+---
+
+## Database Schema
+
+### PBL View Tables
+
+```sql
+-- Core concepts
+CREATE TABLE concepts (
+    id UUID PRIMARY KEY,
+    document_id UUID REFERENCES documents(id),
+    term TEXT NOT NULL,
+    definition TEXT NOT NULL,
+    source_sentences TEXT[],
+    page_number INTEGER,
+    surrounding_concepts TEXT[],
+    structure_type TEXT CHECK (structure_type IN ('hierarchical', 'sequential', 'unclassified')),
+    embedding VECTOR(1536),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_concepts_document ON concepts(document_id);
+CREATE INDEX idx_concepts_embedding ON concepts USING ivfflat (embedding vector_cosine_ops);
+
+-- Relationships between concepts
+CREATE TABLE relationships (
+    id UUID PRIMARY KEY,
+    source_concept_id UUID REFERENCES concepts(id),
+    target_concept_id UUID REFERENCES concepts(id),
+    relationship_type TEXT NOT NULL, -- "is_a", "has_component", "precedes", etc.
+    structure_category TEXT CHECK (structure_category IN ('hierarchical', 'sequential')),
+    strength FLOAT CHECK (strength BETWEEN 0 AND 1),
+    validated_by_user BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_relationships_source ON relationships(source_concept_id);
+CREATE INDEX idx_relationships_target ON relationships(target_concept_id);
+
+-- PBL visualizations
+CREATE TABLE pbl_visualizations (
+    id UUID PRIMARY KEY,
+    document_id UUID REFERENCES documents(id),
+    nodes_json JSONB NOT NULL,
+    edges_json JSONB NOT NULL,
+    layout TEXT, -- "tree", "mindmap", "flowchart", "hybrid"
+    user_id UUID REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+### Sensa Learn Tables
+
+```sql
+-- User profiles
+CREATE TABLE user_profiles (
+    user_id UUID PRIMARY KEY REFERENCES users(id),
+    background_json JSONB,
+    interests_json JSONB,
+    experiences_json JSONB,
+    learning_style_json JSONB,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Analogies
+CREATE TABLE analogies (
+    id UUID PRIMARY KEY,
+    user_id UUID REFERENCES users(id),
+    concept_id UUID REFERENCES concepts(id),
+    user_experience_text TEXT NOT NULL,
+    connection_explanation TEXT,
+    strength FLOAT CHECK (strength BETWEEN 1 AND 5),
+    type TEXT CHECK (type IN ('metaphor', 'experience', 'scenario', 'emotion')),
+    reusable BOOLEAN DEFAULT false,
+    tags TEXT[],
+    created_at TIMESTAMP DEFAULT NOW(),
+    last_used TIMESTAMP,
+    usage_count INTEGER DEFAULT 0
+);
+
+CREATE INDEX idx_analogies_user ON analogies(user_id);
+CREATE INDEX idx_analogies_concept ON analogies(concept_id);
+CREATE INDEX idx_analogies_reusable ON analogies(user_id, reusable) WHERE reusable = true;
+CREATE INDEX idx_analogies_tags ON analogies USING GIN(tags);
+
+-- Concept-Analogy connections
+CREATE TABLE concept_analogy_connections (
+    id UUID PRIMARY KEY,
+    concept_id UUID REFERENCES concepts(id),
+    analogy_id UUID REFERENCES analogies(id),
+    strength FLOAT CHECK (strength BETWEEN 0 AND 1),
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(concept_id, analogy_id)
+);
+
+-- Questions generated for concepts
+CREATE TABLE generated_questions (
+    id UUID PRIMARY KEY,
+    concept_id UUID REFERENCES concepts(id),
+    user_id UUID REFERENCES users(id),
+    question_text TEXT NOT NULL,
+    question_type TEXT, -- "experience_mapping", "process_parallel", etc.
+    answered BOOLEAN DEFAULT false,
+    answer_text TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Learning analytics
+CREATE TABLE learning_analytics (
+    id UUID PRIMARY KEY,
+    user_id UUID REFERENCES users(id),
+    document_id UUID REFERENCES documents(id),
+    analogy_count INTEGER,
+    avg_connection_strength FLOAT,
+    most_used_analogy_id UUID REFERENCES analogies(id),
+    retention_score FLOAT,
+    last_reviewed TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+---
+
+## Processing Pipeline
+
+### PBL View Pipeline
+
+```python
+# backend/services/pbl_pipeline.py
+class PBLPipeline:
+    async def process_document(self, document_id: str, pdf_path: str):
+        # Step 1: Extract concepts
+        concepts = await self.concept_extractor.extract_concepts(pdf_path)
+        await self.concept_service.bulk_create(concepts)
+        
+        # Step 2: Detect structures
+        structures = await self.structure_detector.detect_structures(concepts)
+        await self.relationship_service.bulk_create(structures)
+        
+        # Step 3: Generate default visualization
+        visualization = await self.visualization_engine.create_default(
+            document_id=document_id,
+            concepts=concepts,
+            relationships=structures
+        )
+        
+        return visualization
+```
+
+### Sensa Learn Pipeline
+
+```python
+# backend/services/sensa_pipeline.py
+class SensaPipeline:
+    async def initialize_for_document(
+        self, 
+        user_id: str, 
+        document_id: str
+    ):
+        # Step 1: Get user profile
+        profile = await self.profile_service.get(user_id)
+        
+        # Step 2: Get concepts from PBL view
+        concepts = await self.concept_service.get_by_document(document_id)
+        
+        # Step 3: Check for reusable analogies
+        suggestions = []
+        for concept in concepts:
+            suggested = await self.cross_doc_service.suggest_analogies_for_new_concept(
+                user_id, 
+                concept
+            )
+            suggestions.extend(suggested)
+        
+        # Step 4: Generate questions for concepts without analogies
+        questions = []
+        for concept in concepts:
+            has_suggestion = any(s.concept_id == concept.id for s in suggestions)
+            if not has_suggestion:
+                qs = await self.question_generator.generate_questions(
+                    concept, 
+                    profile, 
+                    max_questions=3
+                )
+                questions.extend(qs)
+        
+        return {
+            "suggestions": suggestions,
+            "questions": questions
+        }
+```
+
+---
+
+## Frontend Architecture
+
+### Component Structure
+
+```
+src/
+├── views/
+│   ├── PBLView/
+│   │   ├── ConceptReviewPanel.tsx
+│   │   ├── StructureExplorer.tsx
+│   │   ├── PBLCanvas.tsx
+│   │   └── VisualizationControls.tsx
+│   │
+│   └── SensaLearnView/
+│       ├── QuestionnairePanel.tsx
+│       ├── AnalogyCreationForm.tsx
+│       ├── AnalogyySuggestions.tsx
+│       ├── SensaCanvas.tsx
+│       └── AnalyticsDisplay.tsx
+│
+├── components/
+typescript│   ├── shared/
+│   │   ├── NodeEditor.tsx
+│   │   ├── ConnectionDrawer.tsx
+│   │   ├── ExportMenu.tsx
+│   │   └── ZoomControls.tsx
+│   │
+│   ├── nodes/
+│   │   ├── HierarchicalNode.tsx
+│   │   ├── SequentialNode.tsx
+│   │   ├── AnalogyNode.tsx
+│   │   └── HybridConnector.tsx
+│   │
+│   └── forms/
+│       ├── ConceptValidationForm.tsx
+│       ├── QuestionAnswerForm.tsx
+│       └── AnalogyStrengthRating.tsx
+│
+├── hooks/
+│   ├── usePBLVisualization.ts
+│   ├── useSensaLearning.ts
+│   ├── useAnalogyGeneration.ts
+│   └── useCrossDocumentSuggestions.ts
+│
+└── services/
+    ├── pblApi.ts
+    ├── sensaApi.ts
+    └── visualizationEngine.ts
+Key Frontend Hooks
+typescript// hooks/usePBLVisualization.ts
+export const usePBLVisualization = (documentId: string) => {
+  const [nodes, setNodes] = useState<DiagramNode[]>([]);
+  const [edges, setEdges] = useState<DiagramEdge[]>([]);
+  const [layout, setLayout] = useState<string>("hybrid");
+  
+  const updateNode = useCallback((nodeId: string, changes: Partial<DiagramNode>) => {
+    setNodes(prev => prev.map(node => 
+      node.id === nodeId ? { ...node, ...changes } : node
+    ));
+  }, []);
+  
+  const addEdge = useCallback((source: string, target: string, type: string) => {
+    const newEdge: DiagramEdge = {
+      id: uuidv4(),
+      source_node_id: source,
+      target_node_id: target,
+      relationship_type: type,
+      label: type.replace("_", " "),
+      style: getEdgeStyle(type)
+    };
+    setEdges(prev => [...prev, newEdge]);
+  }, []);
+  
+  const deleteNode = useCallback((nodeId: string) => {
+    setNodes(prev => prev.filter(node => node.id !== nodeId));
+    setEdges(prev => prev.filter(edge => 
+      edge.source_node_id !== nodeId && edge.target_node_id !== nodeId
+    ));
+  }, []);
+  
+  return { nodes, edges, layout, updateNode, addEdge, deleteNode, setLayout };
+};
+typescript// hooks/useSensaLearning.ts
+export const useSensaLearning = (userId: string, documentId: string) => {
+  const [analogies, setAnalogies] = useState<Analogy[]>([]);
+  const [suggestions, setSuggestions] = useState<AnalogyySuggestion[]>([]);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  
+  useEffect(() => {
+    loadSensaData();
+  }, [documentId]);
+  
+  const loadSensaData = async () => {
+    const data = await sensaApi.initializeForDocument(userId, documentId);
+    setSuggestions(data.suggestions);
+    setQuestions(data.questions);
+    
+    const userAnalogies = await sensaApi.getAnalogies(userId, documentId);
+    setAnalogies(userAnalogies);
+  };
+  
+  const createAnalogy = async (
+    conceptId: string, 
+    experienceText: string, 
+    strength: number
+  ) => {
+    const newAnalogy = await sensaApi.createAnalogy({
+      concept_id: conceptId,
+      user_id: userId,
+      experience_text: experienceText,
+      strength
+    });
+    setAnalogies(prev => [...prev, newAnalogy]);
+    return newAnalogy;
+  };
+  
+  const applySuggestion = async (suggestion: AnalogyySuggestion) => {
+    // Mark as applied and remove from suggestions
+    await sensaApi.applySuggestion(suggestion.id);
+    setSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
+    
+    // Add to analogies
+    setAnalogies(prev => [...prev, suggestion.analogy]);
+  };
+  
+  return { analogies, suggestions, questions, createAnalogy, applySuggestion };
+};
+
+Performance Optimization
+Caching Strategy
+Redis Cache Structure:
+python# Cache keys
+CONCEPT_CACHE_KEY = "concepts:document:{document_id}"
+STRUCTURE_CACHE_KEY = "structures:document:{document_id}"
+PROFILE_CACHE_KEY = "profile:user:{user_id}"
+SUGGESTIONS_CACHE_KEY = "suggestions:user:{user_id}:concept:{concept_id}"
+
+# TTLs
+CONCEPT_TTL = 7 * 24 * 60 * 60  # 7 days
+PROFILE_TTL = 24 * 60 * 60  # 1 day
+SUGGESTIONS_TTL = 60 * 60  # 1 hour
+Implementation:
+pythonclass CacheService:
+    async def get_or_compute_concepts(
+        self, 
+        document_id: str, 
+        compute_fn
+    ) -> List[Concept]:
+        cache_key = f"concepts:document:{document_id}"
+        
+        # Try cache
+        cached = await self.redis.get(cache_key)
+        if cached:
+            return json.loads(cached)
+        
+        # Compute
+        concepts = await compute_fn()
+        
+        # Store
+        await self.redis.setex(
+            cache_key, 
+            self.CONCEPT_TTL, 
+            json.dumps([c.dict() for c in concepts])
+        )
+        
+        return concepts
+Parallel Processing
+python# Process multiple concepts simultaneously
+async def process_concepts_parallel(concepts: List[Concept]) -> Dict:
+    # Create tasks
+    structure_detection_tasks = [
+        detect_structures_for_concept(concept) 
+        for concept in concepts
+    ]
+    
+    embedding_tasks = [
+        generate_embedding(concept.definition)
+        for concept in concepts
+    ]
+    
+    question_tasks = [
+        generate_questions(concept, user_profile)
+        for concept in concepts[:10]  # Limit to first 10
+    ]
+    
+    # Execute in parallel
+    structures, embeddings, questions = await asyncio.gather(
+        asyncio.gather(*structure_detection_tasks),
+        asyncio.gather(*embedding_tasks),
+        asyncio.gather(*question_tasks)
+    )
+    
+    return {
+        "structures": structures,
+        "embeddings": embeddings,
+        "questions": questions
+    }
+Database Query Optimization
+python# Batch loading of related data
+class ConceptService:
+    async def get_with_relationships(
+        self, 
+        document_id: str
+    ) -> List[ConceptWithRelationships]:
+        # Single query with joins
+        query = """
+        SELECT 
+            c.*,
+            json_agg(DISTINCT r.*) as relationships,
+            json_agg(DISTINCT a.*) as analogies
+        FROM concepts c
+        LEFT JOIN relationships r ON (
+            r.source_concept_id = c.id OR 
+            r.target_concept_id = c.id
+        )
+        LEFT JOIN analogies a ON a.concept_id = c.id
+        WHERE c.document_id = $1
+        GROUP BY c.id
+        """
+        
+        results = await self.db.fetch(query, document_id)
+        return [ConceptWithRelationships.from_row(row) for row in results]
+
+Error Handling & Resilience
+Graceful Degradation
+pythonclass ResilientPBLPipeline:
+    async def process_document(self, document_id: str, pdf_path: str):
+        result = {
+            "status": "success",
+            "concepts": [],
+            "structures": {"hierarchical": [], "sequential": []},
+            "warnings": []
+        }
+        
+        try:
+            # Step 1: Extract concepts
+            result["concepts"] = await self.concept_extractor.extract_concepts(pdf_path)
+        except Exception as e:
+            logging.error(f"Concept extraction failed: {e}")
+            result["status"] = "partial"
+            result["warnings"].append("Concept extraction failed - using fallback")
+            # Fallback: Basic text chunking
+            result["concepts"] = await self._fallback_concept_extraction(pdf_path)
+        
+        try:
+            # Step 2: Detect structures
+            result["structures"] = await self.structure_detector.detect_structures(
+                result["concepts"]
+            )
+        except Exception as e:
+            logging.error(f"Structure detection failed: {e}")
+            result["status"] = "partial"
+            result["warnings"].append("Structure detection failed - manual editing required")
+            # Fallback: No relationships
+            result["structures"] = {"hierarchical": [], "sequential": []}
+        
+        try:
+            # Step 3: Create visualization
+            visualization = await self.visualization_engine.create_default(
+                document_id=document_id,
+                concepts=result["concepts"],
+                relationships=result["structures"]
+            )
+            result["visualization_id"] = visualization.id
+        except Exception as e:
+            logging.error(f"Visualization creation failed: {e}")
+            result["status"] = "partial"
+            result["warnings"].append("Visualization creation failed")
+        
+        return result
+User Notifications
+typescript// components/ProcessingStatusDisplay.tsx
+interface ProcessingStatus {
+  status: 'processing' | 'success' | 'partial' | 'failed';
+  currentStep?: string;
+  progress?: number;
+  warnings?: string[];
+  error?: string;
+}
+
+const ProcessingStatusDisplay: React.FC<{ status: ProcessingStatus }> = ({ status }) => {
+  if (status.status === 'processing') {
+    return (
+      <div className="processing-overlay">
+        <Spinner />
+        <p>{status.currentStep}</p>
+        <ProgressBar value={status.progress} />
+      </div>
+    );
+  }
+  
+  if (status.status === 'partial') {
+    return (
+      <Alert variant="warning">
+        <AlertTitle>Processing Completed with Issues</AlertTitle>
+        <AlertDescription>
+          Your document has been processed, but some features may be limited:
+          <ul>
+            {status.warnings.map((warning, i) => (
+              <li key={i}>{warning}</li>
+            ))}
+          </ul>
+          You can still edit and customize the visualization manually.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+  
+  if (status.status === 'failed') {
+    return (
+      <Alert variant="error">
+        <AlertTitle>Processing Failed</AlertTitle>
+        <AlertDescription>
+          {status.error}
+          <Button onClick={() => retryProcessing()}>Retry</Button>
+        </AlertDescription>
+      </Alert>
+    );
+  }
+  
+  return (
+    <Alert variant="success">
+      <AlertTitle>Processing Complete!</AlertTitle>
+      <AlertDescription>
+        Your PBL visualization is ready. Click below to start learning.
+      </AlertDescription>
+    </Alert>
+  );
+};
+
+Testing Strategy
+Unit Tests
+python# tests/test_structure_detector.py
+import pytest
+from services.structure_detector import StructureDetector
+
+class TestStructureDetector:
+    @pytest.fixture
+    def detector(self):
+        return StructureDetector()
+    
+    @pytest.mark.asyncio
+    async def test_hierarchical_detection(self, detector):
+        # Given concepts with hierarchical relationship
+        concept_a = Concept(
+            term="User",
+            definition="A person who uses the system",
+            source_sentences=["There are three types of users: Admin, Editor, Viewer"]
+        )
+        concept_b = Concept(
+            term="Admin",
+            definition="A user with full permissions",
+            source_sentences=["Admin is a type of user with full access"]
+        )
+        
+        # When detecting structures
+        result = await detector.detect_structures([concept_a, concept_b])
+        
+        # Then should find hierarchical relationship
+        assert len(result["hierarchical"]) == 1
+        assert result["hierarchical"][0].relationship_type == "is_a"
+        assert result["hierarchical"][0].source_concept_id == concept_b.id
+        assert result["hierarchical"][0].target_concept_id == concept_a.id
+    
+    @pytest.mark.asyncio
+    async def test_sequential_detection(self, detector):
+        # Given concepts with sequential relationship
+        concept_a = Concept(
+            term="Login",
+            definition="First step to access system",
+            source_sentences=["First, the user must login to the system"]
+        )
+        concept_b = Concept(
+            term="Dashboard",
+            definition="Main interface after login",
+            source_sentences=["After login, the user sees the dashboard"]
+        )
+        
+        # When detecting structures
+        result = await detector.detect_structures([concept_a, concept_b])
+        
+        # Then should find sequential relationship
+        assert len(result["sequential"]) == 1
+        assert result["sequential"][0].relationship_type == "precedes"
+Integration Tests
+python# tests/test_pbl_pipeline_integration.py
+import pytest
+from services.pbl_pipeline import PBLPipeline
+
+class TestPBLPipelineIntegration:
+    @pytest.mark.asyncio
+    @pytest.mark.integration
+    async def test_full_pipeline_with_sample_pdf(self, db_session):
+        # Given a sample PDF
+        pdf_path = "tests/fixtures/sample_textbook.pdf"
+        document_id = "test-doc-123"
+        
+        # When processing through full pipeline
+        pipeline = PBLPipeline(db_session)
+        result = await pipeline.process_document(document_id, pdf_path)
+        
+        # Then should extract concepts
+        assert len(result["concepts"]) > 0
+        
+        # And detect structures
+        assert len(result["structures"]["hierarchical"]) > 0 or \
+               len(result["structures"]["sequential"]) > 0
+        
+        # And create visualization
+        assert result["visualization_id"] is not None
+        
+        # And store in database
+        stored_concepts = await db_session.fetch(
+            "SELECT * FROM concepts WHERE document_id = $1",
+            document_id
+        )
+        assert len(stored_concepts) == len(result["concepts"])
+End-to-End Tests
+typescript// tests/e2e/pbl-to-sensa-flow.spec.ts
+import { test, expect } from '@playwright/test';
+
+test('Complete PBL to Sensa Learn flow', async ({ page }) => {
+  // Navigate to app
+  await page.goto('/');
+  
+  // Upload PDF
+  await page.setInputFiles('input[type="file"]', 'fixtures/sample.pdf');
+  await page.click('button:has-text("Upload")');
+  
+  // Wait for processing
+  await expect(page.locator('.processing-status')).toContainText('Processing Complete');
+  
+  // Review concepts in PBL view
+  await expect(page.locator('.concept-card')).toHaveCount(10, { timeout: 5000 });
+  
+  // Validate all concepts
+  await page.click('button:has-text("Validate All")');
+  
+  // View visualization
+  await page.click('button:has-text("View Map")');
+  await expect(page.locator('.pbl-canvas')).toBeVisible();
+  await expect(page.locator('.diagram-node')).toHaveCount(10);
+  
+  // Edit a node
+  await page.click('.diagram-node:first-child');
+  await page.fill('input[name="node-label"]', 'Updated Concept');
+  await page.click('button:has-text("Save")');
+  
+  // Switch to Sensa Learn view
+  await page.click('button:has-text("Sensa Learn")');
+  
+  // Check suggestions loaded
+  await expect(page.locator('.suggestion-card')).toBeVisible();
+  
+  // Create new analogy
+  await page.click('.concept-card:first-child');
+  await page.fill('textarea[name="experience"]', 'This reminds me of organizing my bookshelf...');
+  await page.click('.strength-rating[data-value="4"]');
+  await page.click('button:has-text("Create Analogy")');
+  
+  // Verify analogy appears
+  await expect(page.locator('.analogy-node')).toHaveCount(1);
+  
+  // Check connection line
+  await expect(page.locator('.connection-edge')).toBeVisible();
+});
+
+Monitoring & Analytics
+CloudWatch Metrics
+python# backend/monitoring/metrics.py
+class MetricsCollector:
+    def __init__(self, cloudwatch_client):
+        self.cloudwatch = cloudwatch_client
+        self.namespace = "TwoViewLearning"
+    
+    def record_processing_time(self, stage: str, duration: float):
+        self.cloudwatch.put_metric_data(
+            Namespace=self.namespace,
+            MetricData=[{
+                'MetricName': 'ProcessingDuration',
+                'Value': duration,
+                'Unit': 'Seconds',
+                'Dimensions': [{'Name': 'Stage', 'Value': stage}]
+            }]
+        )
+    
+    def record_structure_detection_accuracy(self, accuracy: float):
+        self.cloudwatch.put_metric_data(
+            Namespace=self.namespace,
+            MetricData=[{
+                'MetricName': 'StructureDetectionAccuracy',
+                'Value': accuracy,
+                'Unit': 'Percent'
+            }]
+        )
+    
+    def record_analogy_creation(self, strength: float):
+        self.cloudwatch.put_metric_data(
+            Namespace=self.namespace,
+            MetricData=[{
+                'MetricName': 'AnalogyStrength',
+                'Value': strength,
+                'Unit': 'None'
+            }]
+        )
+Learning Analytics Dashboard
+python# backend/services/analytics_service.py
+class AnalyticsService:
+    async def get_user_learning_stats(self, user_id: str) -> Dict:
+        query = """
+        WITH user_analogies AS (
+            SELECT 
+                COUNT(*) as total_analogies,
+                AVG(strength) as avg_strength,
+                COUNT(DISTINCT concept_id) as concepts_with_analogies,
+                array_agg(DISTINCT tags) as all_tags
+            FROM analogies
+            WHERE user_id = $1
+        ),
+        user_connections AS (
+            SELECT 
+                COUNT(*) as total_connections,
+                AVG(strength) as avg_connection_strength
+            FROM concept_analogy_connections cac
+            JOIN analogies a ON cac.analogy_id = a.id
+            WHERE a.user_id = $1
+        ),
+        reusable_count AS (
+            SELECT COUNT(*) as reusable_analogies
+            FROM analogies
+            WHERE user_id = $1 AND reusable = true
+        )
+        SELECT 
+            ua.*,
+            uc.total_connections,
+            uc.avg_connection_strength,
+            rc.reusable_analogies
+        FROM user_analogies ua
+        CROSS JOIN user_connections uc
+        CROSS JOIN reusable_count rc
+        """
+        
+        stats = await self.db.fetchrow(query, user_id)
+        
+        # Calculate connection density
+        connection_density = (
+            stats['total_connections'] / stats['concepts_with_analogies']
+            if stats['concepts_with_analogies'] > 0 else 0
+        )
+        
+        return {
+            "total_analogies": stats['total_analogies'],
+            "avg_analogy_strength": round(stats['avg_strength'], 2),
+            "concepts_covered": stats['concepts_with_analogies'],
+            "connection_density": round(connection_density, 2),
+            "reusable_analogies": stats['reusable_analogies'],
+            "top_tags": self._extract_top_tags(stats['all_tags'], limit=5)
+        }
+
+Deployment Plan
+Phase 1: Core PBL Infrastructure (Weeks 1-2)
+Week 1:
+
+ Set up database schema (PBL tables)
+ Implement ConceptExtractor service
+ Implement PDF parsing with position data
+ Create basic API endpoints for concept management
+ Build ConceptReviewPanel frontend component
+
+Week 2:
+
+ Implement StructureDetector service
+ Add Claude validation for relationships
+ Create relationship API endpoints
+ Build StructureExplorer component
+ Add unit tests for extraction and detection
+
+Deliverable: Users can upload PDFs, review extracted concepts, and see detected relationships
+
+Phase 2: PBL Visualization (Weeks 3-4)
+Week 3:
+
+ Implement PBLVisualizationEngine
+ Choose and integrate diagram library (React Flow or D3)
+ Build PBLCanvas component with basic rendering
+ Implement node/edge editing
+ Add zoom, pan, drag-and-drop
+
+Week 4:
+
+ Implement multiple layout algorithms (tree, mindmap, flowchart)
+ Add hybrid visualization support
+ Build style switcher UI
+ Implement export functionality (PNG, PDF, JSON)
+ Add E2E tests for visualization
+
+Deliverable: Fully editable, exportable PBL visualizations with multiple styles
+
+Phase 3: Sensa Learn Foundation (Weeks 5-6)
+Week 5:
+
+ Set up Sensa Learn database schema
+ Implement UserProfileService
+ Build onboarding questionnaire UI
+ Implement AnalogyService CRUD operations
+ Create AnalogyCreationForm component
+
+Week 6:
+
+ Implement AnalogyQuestionGenerator
+ Build dynamic question generation with Claude
+ Create QuestionnairePanel component
+ Implement analogy storage and retrieval
+ Add tests for question generation
+
+Deliverable: Users can create user profiles and generate personalized analogies
+
+Phase 4: Cross-Document Learning (Week 7)
+
+ Implement CrossDocumentLearningService
+ Add semantic search for analogy suggestions
+ Build AnalogyySuggestions component
+ Implement suggestion application flow
+ Add analytics tracking for analogy reuse
+ Test cross-document suggestions with multiple PDFs
+
+Deliverable: System suggests relevant analogies from past documents
+
+Phase 5: Sensa Learn Visualization (Week 8)
+
+ Implement SensaLearnVisualizationEngine
+ Build all three visualization options (side-by-side, overlay, tabbed)
+ Add interactive hover/click features
+ Implement connection strength visualization
+ Create SensaCanvas component
+ Add E2E tests for Sensa Learn flow
+
+Deliverable: Full Sensa Learn visualization with PBL connections
+
+Phase 6: Polish & Optimization (Week 9-10)
+Week 9:
+
+ Implement caching layer (Redis)
+ Add parallel processing for concepts
+ Optimize database queries
+ Implement graceful degradation
+ Add comprehensive error handling
+
+Week 10:
+
+ Build analytics dashboard
+ Add CloudWatch monitoring
+ Performance testing and tuning
+ Security audit
+ Documentation completion
+
+Deliverable: Production-ready system with monitoring and analytics
+
+Success Metrics
+Technical Metrics
+
+Processing Time: < 3 minutes for 100-page PDF
+Concept Extraction Accuracy: > 85% validated by users
+Structure Detection Precision: > 75% correct relationships
+API Response Time: < 500ms for visualization retrieval
+Cache Hit Rate: > 70% for repeat documents
+
+User Experience Metrics
+
+Concept Validation Rate: > 90% of extracted concepts approved
+Analogy Creation Rate: Average 3+ analogies per document
+Cross-Document Reuse: > 30% of analogies marked reusable
+Connection Density: Average 2+ analogies per concept
+User Retention: > 60% return for second document
+
+Learning Effectiveness Metrics
+
+Retention Rate: > 80% recall after 1 week (via spaced repetition)
+Analogy Strength: Average rating > 4.0/5.0
+Visualization Usage: > 50% of users customize PBL maps
+Sensa Learn Engagement: Average 20+ minutes per document
+
+
+Status: Ready for Implementation
+Next Steps:
+
+Create detailed task breakdown for Phase 1
+Set up development environment
+Initialize database with schema
+Begin ConceptExtractor implementation

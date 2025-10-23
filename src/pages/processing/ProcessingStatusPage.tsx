@@ -1,11 +1,10 @@
-import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, XCircle, Loader2, ArrowRight, RefreshCw, ArrowLeft } from 'lucide-react';
 import { useProcessingStatus } from '../../hooks';
 import { Button } from '../../components/ui/Button';
 import { fadeIn } from '../../utils/animations';
 
-export const ProcessingStatusPage: React.FC = () => {
+export const ProcessingStatusPage = () => {
   const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
 
@@ -61,12 +60,17 @@ export const ProcessingStatusPage: React.FC = () => {
   };
 
   const handleViewConceptMap = () => {
-    // Navigate back to courses - user can find their document there
-    navigate('/courses');
+    // Navigate to PBL document workflow if we have document_id
+    if (status?.document_id) {
+      navigate(`/pbl/document/${status.document_id}`);
+    } else {
+      // Fallback to courses
+      navigate('/pbl/courses');
+    }
   };
 
   const handleTryAgain = () => {
-    navigate('/courses');
+    navigate('/pbl/courses');
   };
 
   if (isLoading) {
@@ -91,7 +95,7 @@ export const ProcessingStatusPage: React.FC = () => {
           <p className="text-gray-600 dark:text-gray-400 mb-6">
             {error.message || 'Could not retrieve processing status'}
           </p>
-          <Button onClick={() => navigate('/courses')}>
+          <Button onClick={() => navigate('/pbl/courses')}>
             Return to Courses
           </Button>
         </div>
@@ -199,7 +203,7 @@ export const ProcessingStatusPage: React.FC = () => {
           {!isComplete && !isFailed && (
             <Button
               variant="ghost"
-              onClick={() => navigate('/courses')}
+              onClick={() => navigate('/pbl/courses')}
             >
               Return to Courses
             </Button>

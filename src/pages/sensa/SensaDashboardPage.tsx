@@ -172,27 +172,41 @@ export function SensaDashboardPage() {
             {/* Course List */}
             <div className="space-y-3">
               {courses?.map((course) => (
-                <button
+                <div
                   key={course.id}
-                  onClick={() => navigate(`/sensa/course/${course.id}`)}
-                  className="w-full p-4 bg-gray-50 dark:bg-dark-bg-secondary rounded-lg hover:bg-gray-100 dark:hover:bg-dark-bg-primary transition-colors text-left group"
+                  className="p-4 bg-gray-50 dark:bg-dark-bg-secondary rounded-lg"
                 >
                   <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold text-text-dark dark:text-dark-text-primary group-hover:text-warm-coral dark:group-hover:text-dark-accent-coral transition-colors">
-                        {course.name}
-                      </h3>
-                      {course.description && (
-                        <p className="text-sm text-text-medium dark:text-dark-text-secondary mt-1">
-                          {course.description}
-                        </p>
-                      )}
-                    </div>
-                    <div className="text-warm-coral dark:text-dark-accent-coral group-hover:translate-x-1 transition-transform">
-                      →
-                    </div>
+                    <button
+                      onClick={() => navigate(`/sensa/course/${course.id}`)}
+                      className="flex-1 text-left group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-semibold text-text-dark dark:text-dark-text-primary group-hover:text-warm-coral dark:group-hover:text-dark-accent-coral transition-colors">
+                            {course.name}
+                          </h3>
+                          {course.description && (
+                            <p className="text-sm text-text-medium dark:text-dark-text-secondary mt-1">
+                              {course.description}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-warm-coral dark:text-dark-accent-coral group-hover:translate-x-1 transition-transform">
+                          →
+                        </div>
+                      </div>
+                    </button>
+                    <Button
+                      onClick={() => navigate(`/concept-map/${course.id}`)}
+                      variant="primary"
+                      size="sm"
+                      className="ml-4"
+                    >
+                      View Concept Map
+                    </Button>
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           </div>

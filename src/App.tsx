@@ -20,7 +20,9 @@ import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
 // Protected pages
 import { PortalSelectionPage } from './pages/PortalSelectionPage';
 import { PBLDashboardPage } from './pages/pbl/PBLDashboardPage';
-import { SensaDashboardPage, SensaCourseDetailPage } from './pages/sensa';
+import { PBLDocumentPage } from './pages/pbl/PBLDocumentPage';
+import { ConceptValidationPage } from './pages/pbl/ConceptValidationPage';
+import { SensaDashboardPage, SensaCourseDetailPage, SensaDocumentPage } from './pages/sensa';
 import { ProfilePage } from './pages/profile/ProfilePage';
 import { ProfileSetupPage } from './pages/profile/ProfileSetupPage';
 import { CoursesListPage, CourseDetailPage } from './pages/courses';
@@ -108,6 +110,22 @@ function AnimatedRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/pbl/document/:documentId"
+          element={
+            <ProtectedRoute>
+              <PBLDocumentPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/pbl/document/:documentId/validate"
+          element={
+            <ProtectedRoute>
+              <ConceptValidationPage />
+            </ProtectedRoute>
+          }
+        />
         
         {/* Sensa Learn Portal Routes */}
         <Route
@@ -123,6 +141,14 @@ function AnimatedRoutes() {
           element={
             <ProtectedRoute>
               <SensaCourseDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/sensa/document/:documentId"
+          element={
+            <ProtectedRoute>
+              <SensaDocumentPage />
             </ProtectedRoute>
           }
         />
@@ -190,6 +216,14 @@ function AnimatedRoutes() {
         />
         <Route
           path="/courses/:courseId/documents/:documentId/concept-map"
+          element={
+            <ProtectedRoute>
+              <ConceptMapPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/concept-map/:documentId"
           element={
             <ProtectedRoute>
               <ConceptMapPage />

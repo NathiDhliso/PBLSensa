@@ -18,7 +18,21 @@ from services.cache_manager import CacheManager
 from services.rate_limiter import RateLimiter
 from services.cost_tracker import CostTracker
 
-app = FastAPI(title="PBL API", version="1.0.0")
+# Import new Sensa Learn routers
+from routers.sensa_profile import router as profile_router
+from routers.sensa_questions import router as questions_router
+from routers.sensa_analogies import router as analogies_router
+from routers.pbl_documents import router as pbl_router
+
+app = FastAPI(title="PBL API", version="2.0.0")
+
+# Include Sensa Learn routers
+app.include_router(profile_router)
+app.include_router(questions_router)
+app.include_router(analogies_router)
+
+# Include PBL router
+app.include_router(pbl_router)
 
 # CORS configuration
 app.add_middleware(

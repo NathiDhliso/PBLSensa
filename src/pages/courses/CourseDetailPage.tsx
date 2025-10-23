@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ChevronLeft, FileText, Network } from 'lucide-react';
 import { useCourse } from '../../hooks';
@@ -10,7 +10,7 @@ import { fadeIn } from '../../utils/animations';
 
 type TabType = 'documents' | 'concept-map';
 
-export const CourseDetailPage: React.FC = () => {
+export const CourseDetailPage = () => {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('documents');
@@ -38,7 +38,7 @@ export const CourseDetailPage: React.FC = () => {
         <div className="max-w-7xl mx-auto">
           <Button
             variant="ghost"
-            onClick={() => navigate('/courses')}
+            onClick={() => navigate('/pbl/courses')}
             className="mb-6"
           >
             <ChevronLeft className="w-4 h-4 mr-2" />
@@ -48,7 +48,7 @@ export const CourseDetailPage: React.FC = () => {
             <p className="text-red-600 dark:text-red-400 mb-4">
               {error?.message || 'Course not found'}
             </p>
-            <Button onClick={() => navigate('/courses')}>
+            <Button onClick={() => navigate('/pbl/courses')}>
               Return to Courses
             </Button>
           </div>
@@ -62,7 +62,7 @@ export const CourseDetailPage: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-6">
-          <Link to="/courses" className="hover:text-purple-600 dark:hover:text-purple-400">
+          <Link to="/pbl/courses" className="hover:text-purple-600 dark:hover:text-purple-400">
             Courses
           </Link>
           <span>/</span>
@@ -84,7 +84,7 @@ export const CourseDetailPage: React.FC = () => {
             </div>
             <Button
               variant="ghost"
-              onClick={() => navigate('/courses')}
+              onClick={() => navigate('/pbl/courses')}
             >
               <ChevronLeft className="w-4 h-4 mr-2" />
               Back

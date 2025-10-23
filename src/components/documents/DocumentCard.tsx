@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileText, Clock, CheckCircle, XCircle, Trash2, Loader2 } from 'lucide-react';
 import { Document } from '../../types/api';
@@ -10,7 +10,7 @@ interface DocumentCardProps {
   document: Document;
 }
 
-export const DocumentCard: React.FC<DocumentCardProps> = ({ document }) => {
+export const DocumentCard = ({ document }: DocumentCardProps) => {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -52,7 +52,8 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({ document }) => {
 
   const handleClick = () => {
     if (document.status === 'completed') {
-      navigate(`/courses/${document.courseId || document.course_id}/documents/${document.id}/concept-map`);
+      // Navigate to PBL document workflow
+      navigate(`/pbl/document/${document.id}`);
     } else if (document.status === 'processing' || document.status === 'pending') {
       navigate(`/processing/${document.taskId}`);
     }

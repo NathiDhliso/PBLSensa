@@ -1,0 +1,127 @@
+{
+  "hierarchical_templates": [
+    {
+      "template_id": "hier_1",
+      "question_type": "experience_mapping",
+      "template_text": "Think of a time you organized {items} into groups or categories. How did you decide what belonged where?",
+      "placeholders": ["{items}"],
+      "structure_type": "hierarchical",
+      "example": "Think of a time you organized your music collection into genres. How did you decide what belonged where?"
+    },
+    {
+      "template_id": "hier_2",
+      "question_type": "metaphorical_bridge",
+      "template_text": "If {concept} were a {user_interest}, what would its different parts or types be?",
+      "placeholders": ["{concept}", "{user_interest}"],
+      "structure_type": "hierarchical",
+      "example": "If a computer system were a sports team, what would its different parts be?"
+    },
+    {
+      "template_id": "hier_3",
+      "question_type": "classification_memory",
+      "template_text": "In your experience with {user_background}, what are different types or categories of {related_domain}? How do they differ?",
+      "placeholders": ["{user_background}", "{related_domain}"],
+      "structure_type": "hierarchical",
+      "example": "In your experience with cooking, what are different types of recipes? How do they differ?"
+    },
+    {
+      "template_id": "hier_4",
+      "question_type": "experience_mapping",
+      "template_text": "Have you ever had to break something complex into smaller parts? Describe how you approached it.",
+      "placeholders": [],
+      "structure_type": "hierarchical",
+      "example": "Have you ever had to break a project into smaller tasks?"
+    }
+  ],
+  "sequential_templates": [
+    {
+      "template_id": "seq_1",
+      "question_type": "process_parallel",
+      "template_text": "Describe your process for {user_activity}. What steps do you always follow, and in what order?",
+      "placeholders": ["{user_activity}"],
+      "structure_type": "sequential",
+      "example": "Describe your process for making your favorite meal. What steps do you always follow?"
+    },
+    {
+      "template_id": "seq_2",
+      "question_type": "routine_mapping",
+      "template_text": "Walk me through a typical {time_period} in your {user_context}. What happens first, then what?",
+      "placeholders": ["{time_period}", "{user_context}"],
+      "structure_type": "sequential",
+      "example": "Walk me through a typical morning in your daily routine. What happens first, then what?"
+    },
+    {
+      "template_id": "seq_3",
+      "question_type": "cause_effect_memory",
+      "template_text": "Tell me about a time when doing one thing led to another in your {user_experience}. What was the chain of events?",
+      "placeholders": ["{user_experience}"],
+      "structure_type": "sequential",
+      "example": "Tell me about a time when one action led to another in your work. What was the chain of events?"
+    },
+    {
+      "template_id": "seq_4",
+      "question_type": "process_parallel",
+      "template_text": "Think of something you've learned to do step-by-step. How did you master each stage?",
+      "placeholders": [],
+      "structure_type": "sequential",
+      "example": "Think of learning to drive. How did you master each stage?"
+    }
+  ],
+  "universal_templates": [
+    {
+      "template_id": "univ_1",
+      "question_type": "general_analogy",
+      "template_text": "What's something from your life that reminds you of {concept}? Why?",
+      "placeholders": ["{concept}"],
+      "structure_type": null,
+      "example": "What's something from your life that reminds you of photosynthesis?"
+    },
+    {
+      "template_id": "univ_2",
+      "question_type": "general_analogy",
+      "template_text": "If you had to explain {concept} to a friend using something they already know about {user_interest}, what would you say?",
+      "placeholders": ["{concept}", "{user_interest}"],
+      "structure_type": null,
+      "example": "If you had to explain databases using something about cooking, what would you say?"
+    },
+    {
+      "template_id": "univ_3",
+      "question_type": "general_analogy",
+      "template_text": "What's a memorable experience from your life that could help you understand {concept}?",
+      "placeholders": ["{concept}"],
+      "structure_type": null,
+      "example": "What's a memorable experience that could help you understand teamwork?"
+    }
+  ],
+  "guided_first_experience": {
+    "description": "Fallback templates for new users with minimal profile data",
+    "universal_domains": ["building", "cooking", "nature", "travel", "sports"],
+    "templates": [
+      {
+        "template_id": "guided_1",
+        "question_type": "general_analogy",
+        "template_text": "Think of {concept} like building something. What would be the foundation? What would you build on top?",
+        "domain": "building"
+      },
+      {
+        "template_id": "guided_2",
+        "question_type": "general_analogy",
+        "template_text": "If {concept} were a recipe, what would be the main ingredients? What steps would you follow?",
+        "domain": "cooking"
+      },
+      {
+        "template_id": "guided_3",
+        "question_type": "general_analogy",
+        "template_text": "Imagine {concept} as something in nature. What natural process or system does it remind you of?",
+        "domain": "nature"
+      }
+    ]
+  },
+  "metadata": {
+    "version": "1.0",
+    "total_templates": 11,
+    "hierarchical_count": 4,
+    "sequential_count": 4,
+    "universal_count": 3
+  }
+}

@@ -1,0 +1,200 @@
+{
+  "categories": [
+    {
+      "id": "hobbies",
+      "name": "Hobbies & Interests",
+      "description": "Tell us about activities you enjoy",
+      "questions": [
+        {
+          "id": "hobbies_1",
+          "question_text": "What hobbies do you enjoy in your free time?",
+          "question_type": "multi_select",
+          "options": [
+            "Reading",
+            "Gaming",
+            "Cooking",
+            "Sports",
+            "Music",
+            "Art & Crafts",
+            "Photography",
+            "Writing",
+            "Gardening",
+            "Other"
+          ],
+          "placeholder": "Select all that apply"
+        },
+        {
+          "id": "hobbies_2",
+          "question_text": "Which of these creative activities have you tried?",
+          "question_type": "multi_select",
+          "options": [
+            "Drawing/Painting",
+            "Playing an instrument",
+            "Singing",
+            "Dancing",
+            "Crafting",
+            "Video editing",
+            "Graphic design",
+            "None"
+          ],
+          "placeholder": "Select all that apply"
+        }
+      ]
+    },
+    {
+      "id": "places",
+      "name": "Places & Travel",
+      "description": "Share your experiences with different places",
+      "questions": [
+        {
+          "id": "places_1",
+          "question_text": "Where have you lived? (Cities or countries)",
+          "question_type": "text_list",
+          "placeholder": "e.g., Cape Town, Johannesburg, London"
+        },
+        {
+          "id": "places_2",
+          "question_text": "What places have you traveled to that left an impression on you?",
+          "question_type": "text_list",
+          "placeholder": "e.g., Paris, Tokyo, New York"
+        }
+      ]
+    },
+    {
+      "id": "work",
+      "name": "Work & Education",
+      "description": "Tell us about your professional background",
+      "questions": [
+        {
+          "id": "work_1",
+          "question_text": "What is your current profession or field of study?",
+          "question_type": "text",
+          "placeholder": "e.g., Software Engineer, Student, Teacher"
+        },
+        {
+          "id": "work_2",
+          "question_text": "What jobs or roles have you held in the past?",
+          "question_type": "text_list",
+          "placeholder": "e.g., Barista, Intern, Sales Associate"
+        },
+        {
+          "id": "work_3",
+          "question_text": "What's your highest level of education?",
+          "question_type": "single_select",
+          "options": [
+            "High School",
+            "Some College",
+            "Bachelor's Degree",
+            "Master's Degree",
+            "PhD",
+            "Other"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sports",
+      "name": "Sports & Physical Activities",
+      "description": "Share your athletic experiences",
+      "questions": [
+        {
+          "id": "sports_1",
+          "question_text": "What sports have you played or do you currently play?",
+          "question_type": "multi_select",
+          "options": [
+            "Soccer/Football",
+            "Basketball",
+            "Tennis",
+            "Swimming",
+            "Running",
+            "Cycling",
+            "Martial Arts",
+            "Yoga",
+            "Gym/Fitness",
+            "Other",
+            "None"
+          ],
+          "placeholder": "Select all that apply"
+        },
+        {
+          "id": "sports_2",
+          "question_text": "Have you competed in any sports or physical activities?",
+          "question_type": "yes_no_text",
+          "placeholder": "If yes, tell us about it"
+        }
+      ]
+    },
+    {
+      "id": "media",
+      "name": "Media & Entertainment",
+      "description": "What do you enjoy watching, reading, or playing?",
+      "questions": [
+        {
+          "id": "media_1",
+          "question_text": "What types of books, movies, or TV shows do you enjoy?",
+          "question_type": "multi_select",
+          "options": [
+            "Science Fiction",
+            "Fantasy",
+            "Mystery/Thriller",
+            "Romance",
+            "Comedy",
+            "Documentary",
+            "Action/Adventure",
+            "Drama",
+            "Horror",
+            "Non-fiction"
+          ],
+          "placeholder": "Select all that apply"
+        },
+        {
+          "id": "media_2",
+          "question_text": "Do you play video games? If so, what types?",
+          "question_type": "multi_select",
+          "options": [
+            "Strategy",
+            "RPG",
+            "Action",
+            "Sports",
+            "Puzzle",
+            "Simulation",
+            "Adventure",
+            "I don't play games"
+          ],
+          "placeholder": "Select all that apply"
+        }
+      ]
+    },
+    {
+      "id": "memories",
+      "name": "Memorable Experiences",
+      "description": "Share significant moments from your life",
+      "questions": [
+        {
+          "id": "memories_1",
+          "question_text": "What's a memorable achievement you're proud of?",
+          "question_type": "text",
+          "placeholder": "e.g., Graduated university, ran a marathon, learned a new skill"
+        },
+        {
+          "id": "memories_2",
+          "question_text": "Describe a challenge you overcame and what you learned from it.",
+          "question_type": "text",
+          "placeholder": "e.g., Learned to code, moved to a new city, started a business"
+        },
+        {
+          "id": "memories_3",
+          "question_text": "What's a skill or hobby you've spent significant time developing?",
+          "question_type": "text",
+          "placeholder": "e.g., Playing guitar for 5 years, cooking Italian food, photography"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "version": "1.0",
+    "total_categories": 6,
+    "total_questions": 16,
+    "estimated_time_minutes": 10
+  }
+}

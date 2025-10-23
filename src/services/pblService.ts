@@ -22,6 +22,24 @@ import {
   CreateCourseRequest,
   UploadDocumentResponse,
 } from '@/types';
+import type {
+  Concept,
+  ConceptValidation,
+  ConceptUpdate,
+  ValidationResponse,
+  Relationship,
+  RelationshipCreate,
+  StructuresResponse,
+  DuplicatesResponse,
+  MergeConceptsResponse,
+  PBLVisualization,
+  NodeUpdate,
+  EdgeCreate,
+  LayoutChangeRequest,
+  LayoutChangeResponse,
+  ExportVisualizationResponse,
+  DeleteResponse,
+} from '@/types/pbl';
 
 /**
  * Generate SHA256 hash of a file
@@ -246,6 +264,308 @@ export const pblService = {
   async deleteDocument(documentId: string): Promise<void> {
     try {
       await apiClient.delete(`/documents/${documentId}`);
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // ============================================================================
+  // PBL Concept Management
+  // ============================================================================
+
+  /**
+   * Get all concepts for a document
+   */
+  async getConcepts(
+    documentId: string,
+    validated?: boolean,
+    structureType?: string
+  ): Promise<Concept[]> {
+    try {
+      const params = new URLSearchParams();
+      if (validated !== undefined) params.append('validated', String(validated));
+      if (structureType) params.append('structure_type', structureType);
+
+      const response = await apiClient.get<Concept[]>(
+        `/api/pbl/documents/${documentId}/concepts?${params}`
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Validate concepts (bulk approve/reject/edit)
+   */
+  async validateConcepts(
+    documentId: string,
+    validation: ConceptValidation
+  ): Promise<ValidationResponse> {
+    try {
+      const response = await apiClient.post<ValidationResponse>(
+        `/api/pbl/documents/${documentId}/concepts/validate`,
+        validation
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Get a single concept
+   */
+  async getConcept(conceptId: string): Promise<Concept> {
+    try {
+      const response = await apiClient.get<Concept>(`/api/pbl/concepts/${conceptId}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Update a concept
+   */
+  async updateConcept(conceptId: string, updates: ConceptUpdate): Promise<Concept> {
+    try {
+      const response = await apiClient.put<Concept>(
+        `/api/pbl/concepts/${conceptId}`,
+        updates
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Delete a concept
+   */
+  async deleteConcept(conceptId: string): Promise<DeleteResponse> {
+    try {
+      const response = await apiClient.delete<DeleteResponse>(
+        `/api/pbl/concepts/${conceptId}`
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // ============================================================================
+  // PBL Relationships
+  // ============================================================================
+
+  /**
+   * Get structures (relationships) for a document
+   */
+  async getStructures(
+    documentId: string,
+    category?: 'hierarchical' | 'sequential'
+  ): Promise<StructuresResponse> {
+    try {
+      const params = category ? `?category=${category}` : '';
+      const response = await apiClient.get<StructuresResponse>(
+        `/api/pbl/documents/${documentId}/structures${params}`
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Create a new relationship
+   */
+  async createRelationship(relationship: RelationshipCreate): Promise<Relationship> {
+    try {
+      const response = await apiClient.post<Relationship>(
+        '/api/pbl/relationships',
+        relationship
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Delete a relationship
+   */
+  async deleteRelationship(relationshipId: string): Promise<DeleteResponse> {
+    try {
+      const response = await apiClient.delete<DeleteResponse>(
+        `/api/pbl/relationships/${relationshipId}`
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // ============================================================================
+  // PBL Deduplication
+  // ============================================================================
+
+  /**
+   * Get duplicate concepts for a document
+   */
+  async getDuplicates(documentId: string): Promise<DuplicatesResponse> {
+    try {
+      const response = await apiClient.get<DuplicatesResponse>(
+        `/api/pbl/documents/${documentId}/duplicates`
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Merge duplicate concepts
+   */
+  async mergeConcepts(
+    primaryId: string,
+    duplicateId: string
+  ): Promise<MergeConceptsResponse> {
+    try {
+      const response = await apiClient.post<MergeConceptsResponse>(
+        `/api/pbl/concepts/merge?primary_id=${primaryId}&duplicate_id=${duplicateId}`
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // ============================================================================
+  // PBL Visualization
+  // ============================================================================
+
+  /**
+   * Get or create visualization for a document
+   */
+  async getVisualization(
+    documentId: string,
+    userId?: string
+  ): Promise<PBLVisualization> {
+    try {
+      const params = userId ? `?user_id=${userId}` : '';
+      const response = await apiClient.get<PBLVisualization>(
+        `/api/pbl/visualizations/${documentId}${params}`
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Update entire visualization
+   */
+  async updateVisualization(
+    visualizationId: string,
+    nodes: any[],
+    edges: any[],
+    viewport?: any
+  ): Promise<{ message: string }> {
+    try {
+      const response = await apiClient.put(
+        `/api/pbl/visualizations/${visualizationId}`,
+        { nodes, edges, viewport }
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Update a single node
+   */
+  async updateNode(
+    visualizationId: string,
+    nodeId: string,
+    updates: NodeUpdate
+  ): Promise<{ message: string }> {
+    try {
+      const response = await apiClient.put(
+        `/api/pbl/visualizations/${visualizationId}/nodes/${nodeId}`,
+        updates
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Create a new edge
+   */
+  async createEdge(
+    visualizationId: string,
+    edge: EdgeCreate
+  ): Promise<{ message: string; edge_id: string }> {
+    try {
+      const response = await apiClient.post(
+        `/api/pbl/visualizations/${visualizationId}/edges`,
+        edge
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Delete an edge
+   */
+  async deleteEdge(
+    visualizationId: string,
+    edgeId: string
+  ): Promise<DeleteResponse> {
+    try {
+      const response = await apiClient.delete<DeleteResponse>(
+        `/api/pbl/visualizations/${visualizationId}/edges/${edgeId}`
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Change visualization layout
+   */
+  async changeLayout(
+    visualizationId: string,
+    layoutType: string
+  ): Promise<LayoutChangeResponse> {
+    try {
+      const response = await apiClient.post<LayoutChangeResponse>(
+        `/api/pbl/visualizations/${visualizationId}/layout`,
+        { layout_type: layoutType }
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Export visualization
+   */
+  async exportVisualization(
+    visualizationId: string,
+    format: 'json' | 'png' | 'pdf'
+  ): Promise<ExportVisualizationResponse> {
+    try {
+      const response = await apiClient.get<ExportVisualizationResponse>(
+        `/api/pbl/visualizations/${visualizationId}/export?format=${format}`
+      );
+      return response.data;
     } catch (error) {
       throw error;
     }
