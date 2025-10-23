@@ -73,8 +73,7 @@ class BedrockAnalogyGenerator:
         try:
             self.client = boto3.client('bedrock-runtime', region_name=region_name)
         except Exception as e:
-            print(f"Warning: Could not initialize Bedrock client: {e}")
-            self.client = None
+            raise Exception(f"Failed to initialize Bedrock client: {e}. Check AWS credentials and region.")
     
     async def generate_analogies(
         self,
@@ -93,9 +92,6 @@ class BedrockAnalogyGenerator:
         Returns:
             AnalogyGenerationResult with generated content
         """
-        if not self.client:
-            raise Exception("Bedrock client not initialized. Check AWS credentials.")
-        
         # Construct prompt
         prompt = self._construct_prompt(chapter_content, user_profile, num_analogies)
         
@@ -103,7 +99,7 @@ class BedrockAnalogyGenerator:
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                response = await self._call_bedrock(prompt)
+                response = self._call_bedrock(prompt)
                 result = self._parse_response(response)
                 return result
             except ClientError as e:
@@ -190,8 +186,8 @@ Generate the response now:"""
         
         return prompt
     
-    async def _call_bedrock(self, prompt: str) -> Dict:
-        """Call Bedrock API with retry logic"""
+    def _call_bedrock(self, prompt: str) -> Dict:
+        """Call Bedrock API"""
         
         request_body = {
             "anthropic_version": "bedrock-2023-05-31",
@@ -213,6 +209,43 @@ Generate the response now:"""
         
         response_body = json.loads(response['body'].read())
         return response_body
+    
+    def invoke_claude(self, prompt: str, max_tokens: Optional[int] = None) -> str:
+        """
+        Simple Claude invocation for concept extraction and validation.
+        
+        Args:
+            prompt: Prompt to send to Claude
+            max_tokens: Optional max tokens override
+            
+        Returns:
+            Claude's response text
+        """
+        request_body = {
+            "anthropic_version": "bedrock-2023-05-31",
+            "max_tokens": max_tokens or self.max_tokens,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            "temperature": self.temperature,
+            "top_p": self.top_p
+        }
+        
+        response = self.client.invoke_model(
+            modelId=self.model_id,
+            body=json.dumps(request_body)
+        )
+        
+        response_body = json.loads(response['body'].read())
+        content = response_body.get('content', [])
+        
+        if not content:
+            raise ValueError("Empty response from Claude")
+        
+        return content[0].get('text', '')
     
     def _parse_response(self, response: Dict) -> AnalogyGenerationResult:
         """Parse and validate Bedrock response"""

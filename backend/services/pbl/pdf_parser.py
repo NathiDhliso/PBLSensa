@@ -23,7 +23,7 @@ class PDFParser:
         self.chunk_overlap = 200  # tokens
         self.chars_per_token = 4  # Approximate characters per token
     
-    async def parse_pdf_with_positions(self, pdf_path: str) -> List[TextChunk]:
+    def parse_pdf_with_positions(self, pdf_path: str) -> List[TextChunk]:
         """
         Parse PDF and extract text with page numbers and positions.
         
@@ -34,6 +34,7 @@ class PDFParser:
             List of TextChunk objects with text and metadata
         """
         try:
+            print(f"  📖 Opening PDF: {pdf_path}")
             logger.info(f"Starting PDF parsing: {pdf_path}")
             
             # Validate file exists
@@ -41,16 +42,21 @@ class PDFParser:
                 raise FileNotFoundError(f"PDF file not found: {pdf_path}")
             
             # Extract text from all pages
+            print(f"  📄 Extracting text from all pages...")
             pages_text = self._extract_text_from_pages(pdf_path)
+            print(f"  ✅ Extracted text from {len(pages_text)} pages")
             
             # Combine into chunks
+            print(f"  ✂️  Chunking text...")
             chunks = self._chunk_text(pages_text)
             
+            print(f"  ✅ Created {len(chunks)} chunks")
             logger.info(f"PDF parsing complete: {len(chunks)} chunks created from {len(pages_text)} pages")
             
             return chunks
             
         except Exception as e:
+            print(f"  ❌ PDF parsing error: {str(e)}")
             logger.error(f"Error parsing PDF {pdf_path}: {str(e)}")
             raise
     

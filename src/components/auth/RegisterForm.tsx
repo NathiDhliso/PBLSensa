@@ -62,7 +62,12 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
       console.log('[RegisterForm] ✓ Cleared previous errors');
       
       // Check rate limiting for registration
-      const isRateLimited = checkRateLimit(data.email, 'regist try again later.',
+      const isRateLimited = checkRateLimit(data.email, 'registration');
+      if (isRateLimited) {
+        setAuthError({
+          code: 'RATE_LIMIT_EXCEEDED',
+          message: 'Too many registration attempts',
+          userMessage: 'You have made too many registration attempts. Please try again later.',
           retryable: false,
         });
         return;

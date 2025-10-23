@@ -24,7 +24,7 @@ class ConceptExtractor:
         self.bedrock_client = bedrock_client or BedrockAnalogyGenerator()
         self.pdf_parser = get_pdf_parser()
     
-    async def extract_concepts(self, pdf_path: str, document_id: str) -> List[Concept]:
+    def extract_concepts(self, pdf_path: str, document_id: str) -> List[Concept]:
         """
         Extract concepts from a PDF document.
         
@@ -36,45 +36,81 @@ class ConceptExtractor:
             List of extracted Concept objects
         """
         try:
+            print(f"\n{'='*80}")
+            print(f"🚀 STARTING CONCEPT EXTRACTION")
+            print(f"{'='*80}")
+            print(f"Document ID: {document_id}")
+            print(f"PDF Path: {pdf_path}")
             logger.info(f"Starting concept extraction for document {document_id}")
             
             # Step 1: Parse PDF with positions
-            text_chunks = await self.pdf_parser.parse_pdf_with_positions(pdf_path)
+            print(f"\n📄 STEP 1: Parsing PDF...")
+            text_chunks = self.pdf_parser.parse_pdf_with_positions(pdf_path)
+            print(f"✅ Parsed {len(text_chunks)} chunks from PDF")
             logger.info(f"Parsed PDF into {len(text_chunks)} chunks")
             
             # Step 2: Extract concepts from each chunk using Claude
+            print(f"\n🤖 STEP 2: Extracting concepts with Claude...")
             all_concepts = []
             for i, chunk in enumerate(text_chunks):
+                print(f"  Processing chunk {i+1}/{len(text_chunks)} (page {chunk.page_number})...")
                 logger.debug(f"Processing chunk {i+1}/{len(text_chunks)}")
                 
-                extracted_data = await self._claude_extract_concepts(chunk)
+                extracted_data = self._claude_extract_concepts(chunk)
+                print(f"    → Extracted {len(extracted_data)} concepts from this chunk")
                 
                 # Convert to Concept objects with enrichment
                 for concept_data in extracted_data:
-                    concept = await self._enrich_with_context(
+                    concept = self._enrich_with_context(
                         concept_data,
                         chunk,
                         text_chunks,
                         document_id
                     )
                     all_concepts.append(concept)
+                    print(f"      • {concept.term}")
             
+            print(f"\n✅ Total concepts extracted: {len(all_concepts)}")
             logger.info(f"Extracted {len(all_concepts)} concepts before deduplication")
             
             # Step 3: Basic deduplication (exact matches)
+            print(f"\n🔄 STEP 3: Deduplicating concepts...")
             unique_concepts = self._deduplicate_exact_matches(all_concepts)
+            print(f"✅ After deduplication: {len(unique_concepts)} unique concepts")
             logger.info(f"After deduplication: {len(unique_concepts)} unique concepts")
             
-            # Step 4: Generate embeddings (will be done in separate task)
-            # concepts_with_embeddings = await self._generate_embeddings(unique_concepts)
+            # Print sample of concepts
+            print(f"\n📋 SAMPLE OF EXTRACTED CONCEPTS:")
+            for i, concept in enumerate(unique_concepts[:10]):
+                print(f"  {i+1}. {concept.term}")
+                print(f"     Definition: {concept.definition[:100]}...")
+                print(f"     Page: {concept.page_number}, Importance: {concept.importance_score}")
             
-            return unique_concepts
+            if len(unique_concepts) > 10:
+                print(f"  ... and {len(unique_concepts) - 10} more concepts")
+            
+            # Step 4: Generate embeddings
+            print(f"\n🔢 STEP 4: Generating embeddings...")
+            concepts_with_embeddings = self._generate_embeddings(unique_concepts)
+            
+            success_count = sum(1 for c in concepts_with_embeddings if c.embedding is not None)
+            print(f"✅ Generated embeddings for {success_count}/{len(concepts_with_embeddings)} concepts")
+            
+            print(f"\n{'='*80}")
+            print(f"✅ CONCEPT EXTRACTION COMPLETE")
+            print(f"{'='*80}")
+            print(f"Total concepts: {len(concepts_with_embeddings)}")
+            print(f"With embeddings: {success_count}")
+            print(f"{'='*80}\n")
+            
+            return concepts_with_embeddings
             
         except Exception as e:
+            print(f"\n❌ ERROR in concept extraction: {str(e)}")
             logger.error(f"Error extracting concepts: {str(e)}")
             raise
     
-    async def _claude_extract_concepts(self, chunk: TextChunk) -> List[ConceptExtractionData]:
+    def _claude_extract_concepts(self, chunk: TextChunk) -> List[ConceptExtractionData]:
         """
         Use Claude to extract concepts from a text chunk.
         
@@ -88,7 +124,9 @@ class ConceptExtractor:
         
         try:
             # Call Claude via Bedrock
-            response = await self._call_claude(prompt)
+            print(f"    🤖 Calling Claude API...")
+            response = self._call_claude(prompt)
+            print(f"    ✅ Claude response received ({len(response)} chars)")
             
             # Parse JSON response
             concepts = self._parse_claude_response(response)
@@ -97,6 +135,7 @@ class ConceptExtractor:
             return concepts
             
         except Exception as e:
+            print(f"    ❌ Claude extraction failed: {str(e)}")
             logger.error(f"Claude extraction failed: {str(e)}")
             # Return empty list on failure (graceful degradation)
             return []
@@ -146,7 +185,7 @@ JSON array:"""
         
         return prompt
     
-    async def _call_claude(self, prompt: str) -> str:
+    def _call_claude(self, prompt: str) -> str:
         """
         Call Claude via Bedrock.
         
@@ -156,22 +195,12 @@ JSON array:"""
         Returns:
             Claude's response text
         """
-        # TODO: Implement actual Bedrock call
-        # For now, return mock response for development
-        
-        # In production, this would be:
-        # response = await self.bedrock_client.generate_text(prompt)
-        # return response
-        
-        # Mock response for development
-        logger.warning("Using mock Claude response - implement Bedrock integration")
-        return json.dumps([
-            {
-                "term": "Example Concept",
-                "definition": "A placeholder concept for development",
-                "source_sentences": ["This is an example sentence."]
-            }
-        ])
+        try:
+            response = self.bedrock_client.invoke_claude(prompt, max_tokens=4000)
+            return response
+        except Exception as e:
+            logger.error(f"Claude API call failed: {e}")
+            raise
     
     def _parse_claude_response(self, response: str) -> List[ConceptExtractionData]:
         """
@@ -184,10 +213,23 @@ JSON array:"""
             List of ConceptExtractionData objects
         """
         try:
+            # Try to extract JSON from response (Claude sometimes adds text before/after)
+            json_start = response.find('[')
+            json_end = response.rfind(']') + 1
+            
+            if json_start == -1 or json_end == 0:
+                print(f"    ⚠️  No JSON array found in response")
+                print(f"    Response preview: {response[:200]}...")
+                logger.error("Claude response is not a JSON array")
+                return []
+            
+            json_str = response[json_start:json_end]
+            
             # Parse JSON
-            data = json.loads(response)
+            data = json.loads(json_str)
             
             if not isinstance(data, list):
+                print(f"    ⚠️  Response is not a list")
                 logger.error("Claude response is not a JSON array")
                 return []
             
@@ -204,22 +246,27 @@ JSON array:"""
                     if concept.term and concept.definition:
                         concepts.append(concept)
                     else:
+                        print(f"    ⚠️  Skipping invalid concept: {item.get('term', 'unknown')}")
                         logger.warning(f"Skipping invalid concept: {item}")
                         
                 except Exception as e:
+                    print(f"    ⚠️  Error parsing concept: {str(e)}")
                     logger.warning(f"Error parsing concept item: {str(e)}")
                     continue
             
             return concepts
             
         except json.JSONDecodeError as e:
+            print(f"    ❌ JSON parse error: {str(e)}")
+            print(f"    Response preview: {response[:500]}...")
             logger.error(f"Failed to parse Claude response as JSON: {str(e)}")
             return []
         except Exception as e:
+            print(f"    ❌ Parse error: {str(e)}")
             logger.error(f"Error parsing Claude response: {str(e)}")
             return []
     
-    async def _enrich_with_context(
+    def _enrich_with_context(
         self,
         concept_data: ConceptExtractionData,
         current_chunk: TextChunk,
@@ -391,7 +438,7 @@ JSON array:"""
         
         return unique_concepts
     
-    async def _generate_embeddings(self, concepts: List[Concept]) -> List[Concept]:
+    def _generate_embeddings(self, concepts: List[Concept]) -> List[Concept]:
         """
         Generate vector embeddings for concepts using Bedrock Titan.
         
@@ -410,43 +457,38 @@ JSON array:"""
         logger.info(f"Generating embeddings for {len(concepts)} concepts")
         
         try:
-            # Batch process concepts for efficiency
-            batch_size = 25  # Titan supports batch processing
-            concepts_with_embeddings = []
+            # Prepare texts for embedding
+            embedding_texts = [
+                f"{concept.term}: {concept.definition}"
+                for concept in concepts
+            ]
             
-            for i in range(0, len(concepts), batch_size):
-                batch = concepts[i:i + batch_size]
-                
-                # Generate embeddings for batch
-                for concept in batch:
-                    try:
-                        # Create text for embedding (term + definition)
-                        embedding_text = f"{concept.term}: {concept.definition}"
-                        
-                        # Generate embedding
-                        embedding = await self._call_titan_embeddings(embedding_text)
-                        
-                        # Update concept with embedding
-                        concept.embedding = embedding
-                        concepts_with_embeddings.append(concept)
-                        
-                    except Exception as e:
-                        logger.error(f"Failed to generate embedding for concept '{concept.term}': {e}")
-                        # Keep concept without embedding
-                        concept.embedding = None
-                        concepts_with_embeddings.append(concept)
-                
-                logger.debug(f"Processed batch {i//batch_size + 1}/{(len(concepts) + batch_size - 1)//batch_size}")
+            # Generate embeddings using embedding service
+            from services.embedding_service import get_embedding_service
+            embedding_service = get_embedding_service()
             
-            logger.info(f"Generated embeddings for {sum(1 for c in concepts_with_embeddings if c.embedding)} concepts")
-            return concepts_with_embeddings
+            embeddings = embedding_service.generate_embeddings_with_retry(
+                embedding_texts,
+                max_retries=3
+            )
+            
+            # Assign embeddings to concepts
+            for concept, embedding in zip(concepts, embeddings):
+                concept.embedding = embedding
+            
+            success_count = sum(1 for e in embeddings if e is not None)
+            logger.info(f"Generated embeddings for {success_count}/{len(concepts)} concepts")
+            
+            return concepts
             
         except Exception as e:
             logger.error(f"Error generating embeddings: {e}")
             # Return concepts without embeddings rather than failing
+            for concept in concepts:
+                concept.embedding = None
             return concepts
     
-    async def _call_titan_embeddings(self, text: str) -> List[float]:
+    def _call_titan_embeddings(self, text: str) -> Optional[List[float]]:
         """
         Call Bedrock Titan Embeddings API.
         
@@ -454,23 +496,16 @@ JSON array:"""
             text: Text to generate embedding for
             
         Returns:
-            768-dimension embedding vector
+            768-dimension embedding vector or None if failed
         """
-        # TODO: Implement actual Bedrock Titan Embeddings API call
-        # Model: amazon.titan-embed-text-v1
-        # Request format:
-        # {
-        #     "inputText": text
-        # }
-        # Response format:
-        # {
-        #     "embedding": [float array of 768 dimensions]
-        # }
-        
-        # For now, return None to indicate not implemented
-        # This will be implemented when Bedrock client is fully integrated
-        logger.debug(f"Titan embeddings call (mocked) for text: {text[:50]}...")
-        return None
+        try:
+            from services.embedding_service import get_embedding_service
+            embedding_service = get_embedding_service()
+            embedding = embedding_service.generate_embedding(text)
+            return embedding
+        except Exception as e:
+            logger.error(f"Failed to generate embedding: {e}")
+            return None
 
 
 # Singleton instance

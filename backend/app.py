@@ -42,6 +42,23 @@ courses_db = {
 }
 documents_db = {}
 
+# Profile storage
+profile_db = {
+    "user-123": {
+        "userId": "user-123",
+        "email": "user@example.com",
+        "name": "User user-123",
+        "ageRange": None,
+        "location": None,
+        "interests": [],
+        "learningStyle": None,
+        "background": None,
+        "educationLevel": None,
+        "createdAt": datetime.now().isoformat(),
+        "updatedAt": datetime.now().isoformat()
+    }
+}
+
 # Health check
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -362,34 +379,67 @@ def get_document_concept_map(document_id):
 @app.route('/profile', methods=['GET'])
 def get_profile():
     """Get user profile"""
-    # Return a default profile
-    return jsonify({
-        "id": "user-1",
-        "email": "user@example.com",
-        "name": "User",
-        "ageRange": "25-34",
-        "location": "United States",
-        "interests": ["Technology", "Science", "Learning"],
-        "created_at": datetime.now().isoformat(),
-        "updated_at": datetime.now().isoformat()
-    })
+    user_id = request.args.get('user_id', 'user-123')
+    
+    # Get profile from storage or create default
+    if user_id not in profile_db:
+        profile_db[user_id] = {
+            "userId": user_id,
+            "email": f"user{user_id}@example.com",
+            "name": f"User {user_id}",
+            "ageRange": None,
+            "location": None,
+            "interests": [],
+            "learningStyle": None,
+            "background": None,
+            "educationLevel": None,
+            "createdAt": datetime.now().isoformat(),
+            "updatedAt": datetime.now().isoformat()
+        }
+    
+    return jsonify(profile_db[user_id])
 
 @app.route('/profile', methods=['PUT'])
 def update_profile():
     """Update user profile"""
+    user_id = request.args.get('user_id', 'user-123')
     data = request.get_json()
     
-    # Return the updated profile
-    return jsonify({
-        "id": "user-1",
-        "email": data.get('email', 'user@example.com'),
-        "name": data.get('name', 'User'),
-        "ageRange": data.get('ageRange'),
-        "location": data.get('location'),
-        "interests": data.get('interests', []),
-        "created_at": datetime.now().isoformat(),
-        "updated_at": datetime.now().isoformat()
-    })
+    # Debug logging
+    print(f"[PROFILE UPDATE] User ID: {user_id}")
+    print(f"[PROFILE UPDATE] Received data: {data}")
+    
+    # Get existing profile or create new one
+    if user_id not in profile_db:
+        profile_db[user_id] = {
+            "userId": user_id,
+            "email": f"user{user_id}@example.com",
+            "name": f"User {user_id}",
+            "createdAt": datetime.now().isoformat()
+        }
+    
+    # Update profile fields - handle both present and empty values
+    profile = profile_db[user_id]
+    if 'name' in data:
+        profile['name'] = data['name']
+    if 'ageRange' in data:
+        profile['ageRange'] = data['ageRange'] if data['ageRange'] else None
+    if 'location' in data:
+        profile['location'] = data['location'] if data['location'] else None
+    if 'interests' in data:
+        profile['interests'] = data['interests']
+    if 'learningStyle' in data:
+        profile['learningStyle'] = data['learningStyle'] if data['learningStyle'] else None
+    if 'background' in data:
+        profile['background'] = data['background'] if data['background'] else None
+    if 'educationLevel' in data:
+        profile['educationLevel'] = data['educationLevel'] if data['educationLevel'] else None
+    
+    profile['updatedAt'] = datetime.now().isoformat()
+    
+    print(f"[PROFILE UPDATE] Updated profile: {profile}")
+    
+    return jsonify(profile)
 
 # Feedback endpoint
 @app.route('/feedback', methods=['POST'])

@@ -39,7 +39,18 @@ export function ProfileEditForm({ profile, onSave, onCancel, isLoading }: Profil
   });
 
   const onSubmit = async (data: ProfileFormData) => {
-    await onSave(data);
+    // Clean up empty strings to undefined for optional fields
+    const cleanedData = {
+      ...data,
+      ageRange: data.ageRange || undefined,
+      location: data.location || undefined,
+      learningStyle: data.learningStyle || undefined,
+      background: data.background || undefined,
+      educationLevel: data.educationLevel || undefined,
+    };
+    
+    console.log('[ProfileEditForm] Submitting data:', cleanedData);
+    await onSave(cleanedData);
   };
 
   return (

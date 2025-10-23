@@ -14,6 +14,22 @@ interface ProfileViewProps {
 }
 
 export function ProfileView({ profile, onEdit }: ProfileViewProps) {
+  // Format learning style for display
+  const formatLearningStyle = (style?: string) => {
+    if (!style) return 'Not set';
+    return style.split('-').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join('/');
+  };
+
+  // Format education level for display
+  const formatEducationLevel = (level?: string) => {
+    if (!level) return 'Not set';
+    return level.split('_').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ');
+  };
+
   const fields = [
     {
       icon: User,
@@ -47,9 +63,27 @@ export function ProfileView({ profile, onEdit }: ProfileViewProps) {
     },
   ];
 
+  const learningPreferences = [
+    {
+      label: 'Learning Style',
+      value: formatLearningStyle(profile.learningStyle),
+      isEmpty: !profile.learningStyle,
+    },
+    {
+      label: 'Education Level',
+      value: formatEducationLevel(profile.educationLevel),
+      isEmpty: !profile.educationLevel,
+    },
+    {
+      label: 'Background',
+      value: profile.background || 'Not set',
+      isEmpty: !profile.background,
+    },
+  ];
+
   return (
     <div className="space-y-6">
-      {/* Profile Fields */}
+      {/* Basic Profile Fields */}
       <div className="space-y-4">
         {fields.map((field) => {
           const Icon = field.icon;
@@ -76,6 +110,32 @@ export function ProfileView({ profile, onEdit }: ProfileViewProps) {
             </div>
           );
         })}
+      </div>
+
+      {/* Learning Preferences Section */}
+      <div className="border-t border-gray-200 dark:border-dark-border-default pt-6">
+        <h3 className="text-lg font-semibold text-text-dark dark:text-dark-text-primary mb-4">
+          Learning Preferences
+        </h3>
+        <div className="space-y-3">
+          {learningPreferences.map((pref) => (
+            <div
+              key={pref.label}
+              className="flex justify-between items-center p-3 rounded-lg bg-gray-50 dark:bg-dark-bg-secondary"
+            >
+              <span className="text-sm font-medium text-text-medium dark:text-dark-text-secondary">
+                {pref.label}
+              </span>
+              <span className={`text-sm ${
+                pref.isEmpty 
+                  ? 'text-text-light dark:text-dark-text-tertiary italic' 
+                  : 'text-text-dark dark:text-dark-text-primary'
+              }`}>
+                {pref.value}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Edit Button */}

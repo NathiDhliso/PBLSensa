@@ -6,15 +6,15 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/services/api';
-import { UpdateProfileRequest, UpdateProfileResponse } from '@/types/profile';
+import { UpdateProfileRequest, UserProfile } from '@/types/profile';
 
 /**
  * Update user profile via API
  */
-async function updateProfile(data: UpdateProfileRequest): Promise<UpdateProfileResponse> {
+async function updateProfile(data: UpdateProfileRequest): Promise<UserProfile> {
   // TODO: Get actual user_id from auth context
   const userId = 'user-123'; // Temporary hardcoded user ID
-  const response = await apiClient.put<UpdateProfileResponse>('/profile', data, {
+  const response = await apiClient.put<UserProfile>('/profile', data, {
     params: { user_id: userId }
   });
   return response.data;
@@ -32,9 +32,9 @@ export function useUpdateProfile() {
 
   return useMutation({
     mutationFn: updateProfile,
-    onSuccess: (data) => {
+    onSuccess: (profile) => {
       // Update the profile cache with new data
-      queryClient.setQueryData(['profile'], data.profile);
+      queryClient.setQueryData(['profile'], profile);
       
       // Invalidate to ensure fresh data on next fetch
       queryClient.invalidateQueries({ queryKey: ['profile'] });

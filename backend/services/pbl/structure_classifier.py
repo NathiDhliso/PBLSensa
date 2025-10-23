@@ -87,7 +87,7 @@ class StructureClassifier:
             r'\b(transition|progression|flow|cycle)\b'
         ]
     
-    async def classify_relationships(
+    def classify_relationships(
         self,
         concepts: List[Concept],
         relationships: List[Relationship]
@@ -124,7 +124,7 @@ class StructureClassifier:
                 pattern_result = self._match_patterns(source, target)
                 
                 # Claude validation
-                validated = await self._claude_validate_relationship(
+                validated = self._claude_validate_relationship(
                     source,
                     target,
                     pattern_result
@@ -209,7 +209,7 @@ class StructureClassifier:
             matched_patterns=matched_patterns
         )
     
-    async def _claude_validate_relationship(
+    def _claude_validate_relationship(
         self,
         source: Concept,
         target: Concept,
@@ -293,20 +293,14 @@ Generate the response now:"""
         
         return prompt
     
-    async def _call_claude(self, prompt: str) -> str:
+    def _call_claude(self, prompt: str) -> str:
         """Call Claude via Bedrock"""
-        # TODO: Implement actual Bedrock client call
-        # This would use: self.bedrock_client.client.invoke_model(...)
-        
-        # Mock response for development
-        logger.debug("Using mock Claude response (TODO: implement actual Bedrock call)")
-        return json.dumps({
-            "structure_category": "hierarchical",
-            "relationship_type": "is_a",
-            "direction": "A_to_B",
-            "strength": 0.85,
-            "reasoning": "Concept A is a type of Concept B based on the definitions"
-        })
+        try:
+            response = self.bedrock_client.invoke_claude(prompt, max_tokens=1000)
+            return response
+        except Exception as e:
+            logger.error(f"Claude API call failed: {e}")
+            raise
     
     def _parse_claude_response(self, response: str) -> Dict:
         """Parse Claude's JSON response"""
@@ -431,7 +425,7 @@ Generate the response now:"""
         
         return min(strength, 1.0)
     
-    async def classify_concept_structure_type(self, concept: Concept) -> str:
+    def classify_concept_structure_type(self, concept: Concept) -> str:
         """
         Classify a single concept's structure type based on its definition.
         
@@ -458,7 +452,7 @@ Generate the response now:"""
         else:
             return StructureCategory.UNCLASSIFIED.value
     
-    async def detect_relationships(
+    def detect_relationships(
         self,
         concepts: List[Concept],
         min_strength: float = 0.3
@@ -496,7 +490,7 @@ Generate the response now:"""
                 
                 if combined_confidence >= min_strength:
                     # Claude validation
-                    validated = await self._claude_validate_relationship(
+                    validated = self._claude_validate_relationship(
                         source,
                         target,
                         pattern_result

@@ -30,7 +30,7 @@ export const DuplicateResolver: React.FC<DuplicateResolverProps> = ({
     return <div className="p-8 text-center">Finding duplicates...</div>;
   }
 
-  if (!data || data.duplicates.length === 0) {
+  if (!data || !data.duplicates || data.duplicates.length === 0) {
     return (
       <div className="p-8 text-center text-gray-500">
         <p className="text-lg font-medium">No duplicates found!</p>

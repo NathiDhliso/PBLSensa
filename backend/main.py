@@ -237,7 +237,18 @@ async def upload_document(
     course_id: str = Form(...),
     sha256_hash: Optional[str] = Form(None)
 ):
-    """Upload a document to a course"""
+    """Upload a document to a course and process with PBL pipeline"""
+    import tempfile
+    import os
+    import sys
+    from services.pbl import get_pbl_pipeline
+    
+    # Force flush to ensure prints appear immediately
+    print("\n" + "="*80, flush=True)
+    print("🚨 UPLOAD ENDPOINT HIT!", flush=True)
+    print("="*80 + "\n", flush=True)
+    sys.stdout.flush()
+    
     # Validate file type
     if not file.filename.endswith('.pdf'):
         raise HTTPException(status_code=422, detail="Only PDF files are supported")
@@ -249,25 +260,87 @@ async def upload_document(
     doc_id = f"doc-{len(documents_db) + 1}"
     task_id = str(uuid.uuid4())
     
-    document = Document(
-        id=doc_id,
-        course_id=course_id,
-        filename=file.filename,
-        status="completed",  # Mark as completed immediately for mock
-        uploaded_at=datetime.now().isoformat(),
-        processed_at=datetime.now().isoformat()
-    )
+    print(f"\n{'='*80}")
+    print(f"📤 NEW DOCUMENT UPLOAD")
+    print(f"{'='*80}")
+    print(f"Filename: {file.filename}")
+    print(f"Course ID: {course_id}")
+    print(f"Document ID: {doc_id}")
+    print(f"Task ID: {task_id}")
+    print(f"{'='*80}\n")
     
-    documents_db[doc_id] = document
-    
-    # Update course document count
-    courses_db[course_id].document_count += 1
-    
-    return {
-        "task_id": task_id,
-        "document_id": doc_id,
-        "status": "completed"
-    }
+    # Save file temporarily
+    temp_path = None
+    try:
+        # Create temp file
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_file:
+            temp_path = temp_file.name
+            print(f"💾 Saving to temp file: {temp_path}")
+            
+            # Read and save file
+            content = await file.read()
+            temp_file.write(content)
+            print(f"✅ File saved ({len(content)} bytes)")
+        
+        # Process with PBL pipeline
+        print(f"\n🚀 Starting PBL pipeline processing...")
+        pipeline = get_pbl_pipeline()
+        
+        result = pipeline.process_document(
+            pdf_path=temp_path,
+            document_id=uuid.UUID(doc_id.replace('doc-', '00000000-0000-0000-0000-00000000000'))
+        )
+        
+        # Create document record
+        document = Document(
+            id=doc_id,
+            course_id=course_id,
+            filename=file.filename,
+            status="completed" if result['success'] else "failed",
+            uploaded_at=datetime.now().isoformat(),
+            processed_at=datetime.now().isoformat()
+        )
+        
+        documents_db[doc_id] = document
+        
+        # Update course document count
+        courses_db[course_id].document_count += 1
+        
+        print(f"\n✅ Document processing complete!")
+        print(f"Status: {document.status}")
+        print(f"Results: {result.get('results', {})}\n")
+        
+        return {
+            "task_id": task_id,
+            "document_id": doc_id,
+            "status": document.status,
+            "results": result.get('results', {})
+        }
+        
+    except Exception as e:
+        print(f"\n❌ ERROR during document processing:")
+        print(f"Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
+        # Still create document record but mark as failed
+        document = Document(
+            id=doc_id,
+            course_id=course_id,
+            filename=file.filename,
+            status="failed",
+            uploaded_at=datetime.now().isoformat(),
+            processed_at=None
+        )
+        documents_db[doc_id] = document
+        
+        raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
+        
+    finally:
+        # Clean up temp file
+        if temp_path and os.path.exists(temp_path):
+            os.unlink(temp_path)
+            print(f"🗑️  Cleaned up temp file")
 
 @app.delete("/documents/{document_id}")
 async def delete_document(document_id: str):
@@ -791,7 +864,10 @@ async def get_pbl_concepts(
 @app.get("/api/pbl/documents/{document_id}/duplicates")
 async def get_pbl_duplicates(document_id: str):
     """Get duplicate concepts for a PBL document"""
-    return []
+    return {
+        "duplicates": [],
+        "total_groups": 0
+    }
 
 @app.get("/api/pbl/visualizations/{document_id}")
 async def get_pbl_visualization(document_id: str):

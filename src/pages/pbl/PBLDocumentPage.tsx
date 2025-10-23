@@ -33,7 +33,7 @@ export function PBLDocumentPage() {
   }
 
   const unvalidatedCount = concepts?.filter((c) => !c.validated).length || 0;
-  const duplicateCount = duplicates?.duplicates.length || 0;
+  const duplicateCount = duplicates?.duplicates?.length || 0;
 
   const handleValidationComplete = () => {
     if (duplicateCount > 0) {
