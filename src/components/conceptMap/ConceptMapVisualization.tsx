@@ -52,8 +52,8 @@ const ConceptMapVisualizationComponent = ({
   const [currentLayout, setCurrentLayout] = useState<LayoutType>(layout);
 
   // Extract nodes and links from concept map
-  const allNodes: D3Node[] = conceptMap.chapters.flatMap((chapter: any) =>
-    chapter.keywords.map((keyword: any) => ({
+  const allNodes: D3Node[] = (conceptMap?.chapters || []).flatMap((chapter: any) =>
+    (chapter.keywords || []).map((keyword: any) => ({
       id: `${chapter.chapter_number}-${keyword.term}`,
       concept: {
         id: `${chapter.chapter_number}-${keyword.term}`,
@@ -83,8 +83,8 @@ const ConceptMapVisualizationComponent = ({
       })
     : allNodes;
 
-  const links: D3Link[] = conceptMap.chapters.flatMap((chapter: any) =>
-    chapter.relationships.map((rel: any) => ({
+  const links: D3Link[] = (conceptMap?.chapters || []).flatMap((chapter: any) =>
+    (chapter.relationships || []).map((rel: any) => ({
       source: `${chapter.chapter_number}-${rel.source}`,
       target: `${chapter.chapter_number}-${rel.target}`,
       relationship: rel,
@@ -657,8 +657,8 @@ export const ConceptMapVisualization = React.memo(
   (prevProps, nextProps) => {
     // Custom comparison for performance
     return (
-      prevProps.conceptMap.course_id === nextProps.conceptMap.course_id &&
-      prevProps.conceptMap.chapters.length === nextProps.conceptMap.chapters.length &&
+      prevProps.conceptMap?.course_id === nextProps.conceptMap?.course_id &&
+      prevProps.conceptMap?.chapters?.length === nextProps.conceptMap?.chapters?.length &&
       prevProps.layout === nextProps.layout &&
       prevProps.highlightedNodes === nextProps.highlightedNodes
     );

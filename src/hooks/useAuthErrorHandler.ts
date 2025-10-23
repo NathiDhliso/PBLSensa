@@ -59,7 +59,7 @@ export function useAuthErrorHandler() {
     const authError = transformAuthError(error);
     
     // Log error for debugging (in development)
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       console.error('[Auth Error]', formatErrorForLogging(authError));
     }
 

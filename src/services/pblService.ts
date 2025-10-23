@@ -95,6 +95,7 @@ export const pblService = {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
+          timeout: 300000, // 5 minutes for large PDF processing
         }
       );
 

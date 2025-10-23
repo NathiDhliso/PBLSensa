@@ -23,19 +23,15 @@ import { useSecurityMonitor } from '@/hooks/useSecurityMonitor';
 import type { AuthError } from '@/utils/authErrors';
 import { CheckCircle } from 'lucide-react';
 
-interface RegisterFormProps {
-  onSuccess?: () => void;
-}
-
-export function RegisterForm({ onSuccess }: RegisterFormProps) {
+export function RegisterForm() {
   const navigate = useNavigate();
-  const { signUp, signIn } = useAuth();
+  const { signUp } = useAuth();
   const { handleError } = useAuthErrorHandler();
   const { checkRateLimit, recordAttempt } = useSecurityMonitor();
   
   const [authError, setAuthError] = useState<AuthError | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
+  const [isSuccess] = useState(false);
 
   const {
     register,

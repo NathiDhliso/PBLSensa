@@ -286,7 +286,7 @@ async def upload_document(
         print(f"\n🚀 Starting PBL pipeline processing...")
         pipeline = get_pbl_pipeline()
         
-        result = pipeline.process_document(
+        result = await pipeline.process_document(
             pdf_path=temp_path,
             document_id=uuid.UUID(doc_id.replace('doc-', '00000000-0000-0000-0000-00000000000'))
         )

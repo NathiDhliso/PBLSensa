@@ -11,8 +11,8 @@ from uuid import UUID
 from datetime import datetime
 from models.pbl_visualization import (
     PBLVisualization,
-    VisualizationCreate,
-    VisualizationUpdate,
+    PBLVisualizationCreate,
+    PBLVisualizationUpdate,
     LayoutType
 )
 
@@ -76,7 +76,7 @@ class VisualizationService:
     async def update(
         self,
         visualization_id: UUID,
-        update_data: VisualizationUpdate
+        update_data: PBLVisualizationUpdate
     ) -> Optional[PBLVisualization]:
         """
         Update visualization metadata.
@@ -137,7 +137,7 @@ class VisualizationService:
         """
         logger.info(f"Changing layout for visualization {visualization_id} to {layout_type}")
         
-        update_data = VisualizationUpdate(layout_type=layout_type)
+        update_data = PBLVisualizationUpdate(layout_type=layout_type)
         return await self.update(visualization_id, update_data)
     
     async def export_data(

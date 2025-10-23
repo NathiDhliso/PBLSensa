@@ -10,6 +10,7 @@ from services.pbl.relationship_service import RelationshipService, get_relations
 from services.pbl.concept_deduplicator import ConceptDeduplicator, get_concept_deduplicator
 from services.pbl.concept_service import ConceptService, get_concept_service
 from services.pbl.visualization_service import VisualizationService, get_visualization_service
+from services.pbl.pbl_pipeline import PBLPipeline, get_pbl_pipeline
 
 __all__ = [
     'PDFParser',
@@ -24,4 +25,6 @@ __all__ = [
     'get_concept_service',
     'VisualizationService',
     'get_visualization_service',
+    'PBLPipeline',
+    'get_pbl_pipeline',
 ]

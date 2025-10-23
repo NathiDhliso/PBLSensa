@@ -1,3 +1,7 @@
+python backend/main.py
+
+
+
 # Two-View Learning System: Revised Design Document
 
 ## Overview

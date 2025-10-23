@@ -41,8 +41,8 @@ const STORAGE_KEYS = {
  */
 export class SessionManager {
   private config: SessionConfig;
-  private activityTimer: NodeJS.Timeout | null = null;
-  private checkInterval: NodeJS.Timeout | null = null;
+  private activityTimer: number | null = null;
+  private checkInterval: number | null = null;
   private broadcastChannel: BroadcastChannel | null = null;
   private onLogout: (() => void) | null = null;
 
@@ -246,7 +246,7 @@ export class SessionManager {
       if (this.checkInactivity()) {
         this.handleInactivityLogout();
       }
-    }, this.config.refreshInterval);
+    }, this.config.refreshInterval) as unknown as number;
   }
 
   /**

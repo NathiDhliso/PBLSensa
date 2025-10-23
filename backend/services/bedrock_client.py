@@ -54,14 +54,14 @@ class BedrockAnalogyGenerator:
     def __init__(
         self,
         region_name: str = "us-east-1",
-        model_id: str = "anthropic.claude-3-5-sonnet-20241022-v2:0"
+        model_id: str = "anthropic.claude-3-5-sonnet-20240620-v1:0"
     ):
         """
         Initialize Bedrock client
         
         Args:
             region_name: AWS region for Bedrock
-            model_id: Claude model ID to use
+            model_id: Claude model ID to use (use stable v1:0 version for Bedrock)
         """
         self.region_name = region_name
         self.model_id = model_id

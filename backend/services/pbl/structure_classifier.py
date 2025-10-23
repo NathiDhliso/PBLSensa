@@ -87,7 +87,7 @@ class StructureClassifier:
             r'\b(transition|progression|flow|cycle)\b'
         ]
     
-    def classify_relationships(
+    async def classify_relationships(
         self,
         concepts: List[Concept],
         relationships: List[Relationship]
@@ -124,7 +124,7 @@ class StructureClassifier:
                 pattern_result = self._match_patterns(source, target)
                 
                 # Claude validation
-                validated = self._claude_validate_relationship(
+                validated = await self._claude_validate_relationship(
                     source,
                     target,
                     pattern_result
@@ -209,7 +209,7 @@ class StructureClassifier:
             matched_patterns=matched_patterns
         )
     
-    def _claude_validate_relationship(
+    async def _claude_validate_relationship(
         self,
         source: Concept,
         target: Concept,
@@ -293,7 +293,7 @@ Generate the response now:"""
         
         return prompt
     
-    def _call_claude(self, prompt: str) -> str:
+    async def _call_claude(self, prompt: str) -> str:
         """Call Claude via Bedrock"""
         try:
             response = self.bedrock_client.invoke_claude(prompt, max_tokens=1000)
@@ -452,7 +452,7 @@ Generate the response now:"""
         else:
             return StructureCategory.UNCLASSIFIED.value
     
-    def detect_relationships(
+    async def detect_relationships(
         self,
         concepts: List[Concept],
         min_strength: float = 0.3
@@ -490,7 +490,7 @@ Generate the response now:"""
                 
                 if combined_confidence >= min_strength:
                     # Claude validation
-                    validated = self._claude_validate_relationship(
+                    validated = await self._claude_validate_relationship(
                         source,
                         target,
                         pattern_result

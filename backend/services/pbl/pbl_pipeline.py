@@ -9,15 +9,13 @@ import logging
 from typing import Dict, Optional, Callable
 from uuid import UUID
 from datetime import datetime
-from services.pbl import (
-    get_pdf_parser,
-    get_concept_extractor,
-    get_structure_classifier,
-    get_concept_deduplicator,
-    get_concept_service,
-    get_relationship_service,
-    get_visualization_service
-)
+from services.pbl.pdf_parser import get_pdf_parser
+from services.pbl.concept_extractor import get_concept_extractor
+from services.pbl.structure_classifier import get_structure_classifier
+from services.pbl.concept_deduplicator import get_concept_deduplicator
+from services.pbl.concept_service import get_concept_service
+from services.pbl.relationship_service import get_relationship_service
+from services.pbl.visualization_service import get_visualization_service
 from services.rate_limiter import RateLimiter
 from services.cost_tracker import CostTracker
 from services.cache_manager import CacheManager
@@ -76,7 +74,7 @@ class PBLPipeline:
         
         logger.info("PBLPipeline initialized")
     
-    def process_document(
+    async def process_document(
         self,
         pdf_path: str,
         document_id: UUID,
@@ -142,7 +140,7 @@ class PBLPipeline:
             logger.info("Stage 3: Structure Classification")
             
             # Detect relationships
-            detected_relationships = self.structure_classifier.detect_relationships(
+            detected_relationships = await self.structure_classifier.detect_relationships(
                 concepts,
                 min_strength=0.3
             )
