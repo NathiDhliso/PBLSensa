@@ -52,17 +52,17 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
   const passwordStrength = usePasswordStrength(password);
 
   const onSubmit = async (data: RegisterFormData) => {
+    console.log('='.repeat(60));
+    console.log('[RegisterForm] 🚀 Starting registration process');
+    console.log('[RegisterForm] Form data:', { email: data.email, hasName: !!data.name, hasPassword: !!data.password });
+    
     try {
       // Clear any previous errors
       setAuthError(null);
+      console.log('[RegisterForm] ✓ Cleared previous errors');
       
       // Check rate limiting for registration
-      const isRateLimited = checkRateLimit(data.email, 'registration');
-      if (isRateLimited) {
-        setAuthError({
-          code: 'RATE_LIMIT_EXCEEDED',
-          message: 'Too many registration attempts',
-          userMessage: 'Too many registration attempts. Please try again later.',
+      const isRateLimited = checkRateLimit(data.email, 'regist try again later.',
           retryable: false,
         });
         return;
@@ -82,38 +82,24 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
       // Show loading state
       setShowSuccess(false);
       
-      // Sign up user
-      await signUp(data.email, data.password, data.name ? { name: data.name } : undefined);
+      // Sign up user (only email is sent, name is ignored by auth service)
+      await signUp(data.email, data.password);
       
       // Record successful attempt
       recordAttempt(data.email, 'registration', true);
       
-      // Show success state
+      // Show success message and redirect to email confirmation
       setShowSuccess(true);
       
-      // Auto-login after brief delay
-      setTimeout(async () => {
-        try {
-          // Automatically sign in the user
-          await signIn(data.email, data.password);
-          
-          setIsSuccess(true);
-          onSuccess?.();
-          
-          // Redirect to dashboard
-          setTimeout(() => {
-            navigate('/dashboard', { 
-              replace: true,
-              state: { message: 'Welcome to Sensa Learn! Your account has been created successfully.' }
-            });
-          }, 1000);
-        } catch (error) {
-          // If auto-login fails, redirect to login page
-          navigate('/login', {
-            state: { message: 'Account created! Please sign in to continue.' }
-          });
-        }
-      }, 800);
+      // Redirect to email confirmation page
+      setTimeout(() => {
+        navigate('/confirm-email', {
+          state: { 
+            email: data.email,
+            message: 'Account created! Please check your email for the verification code.'
+          }
+        });
+      }, 1500);
       
     } catch (error: any) {
       // Record failed attempt

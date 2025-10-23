@@ -177,20 +177,42 @@ export const authService = {
     password: string,
     attributes?: Omit<UserAttributes, 'email'>
   ): Promise<SignUpOutput> {
+    console.log('[Auth Service] Starting signup process...');
+    console.log('[Auth Service] Email:', email);
+    console.log('[Auth Service] Attributes received:', attributes);
+    console.log('[Auth Service] Sending only email to Cognito (name ignored)');
+    
     try {
-      const result = await amplifySignUp({
+      // Only send email during signup to avoid "unauthorized attribute" errors
+      // Other attributes like 'name' can be updated after signup
+      const signUpParams = {
         username: email,
         password,
         options: {
           userAttributes: {
             email,
-            ...attributes,
+            // Note: 'name' and other attributes are not sent during signup
+            // They can be updated later via updateUserAttributes if needed
           },
         },
-      });
+      };
+      
+      console.log('[Auth Service] SignUp params:', JSON.stringify(signUpParams, null, 2));
+      
+      const result = await amplifySignUp(signUpParams);
+      
+      console.log('[Auth Service] ✅ Signup successful!');
+      console.log('[Auth Service] Result:', result);
+      console.log('[Auth Service] User confirmed:', result.isSignUpComplete);
+      console.log('[Auth Service] Next step:', result.nextStep);
 
       return result;
     } catch (error: any) {
+      console.error('[Auth Service] ❌ Signup failed!');
+      console.error('[Auth Service] Error code:', error.code);
+      console.error('[Auth Service] Error name:', error.name);
+      console.error('[Auth Service] Error message:', error.message);
+      console.error('[Auth Service] Full error:', error);
       throw new Error(error.message || 'Failed to sign up');
     }
   },

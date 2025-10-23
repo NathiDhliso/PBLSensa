@@ -1,33 +1,23 @@
 /**
  * useUpdateProfile Hook
  * 
- * Mutation hook for updating user profile data with mock fallback
+ * Mutation hook for updating user profile data via live API
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/services/api';
-import { UpdateProfileRequest, UpdateProfileResponse, UserProfile } from '@/types/profile';
-import { updateMockProfile } from '@/services/mockData';
+import { UpdateProfileRequest, UpdateProfileResponse } from '@/types/profile';
 
 /**
- * Update user profile via API with mock fallback
+ * Update user profile via API
  */
 async function updateProfile(data: UpdateProfileRequest): Promise<UpdateProfileResponse> {
-  try {
-    // TODO: Get actual user_id from auth context
-    const userId = 'user-123'; // Temporary hardcoded user ID
-    const response = await apiClient.put<UpdateProfileResponse>('/profile', data, {
-      params: { user_id: userId }
-    });
-    return response.data;
-  } catch (error) {
-    console.log('[useUpdateProfile] API failed, using mock data');
-    const updatedProfile = await updateMockProfile(data as Partial<UserProfile>);
-    return { 
-      profile: updatedProfile,
-      message: 'Profile updated successfully (mock data)',
-    };
-  }
+  // TODO: Get actual user_id from auth context
+  const userId = 'user-123'; // Temporary hardcoded user ID
+  const response = await apiClient.put<UpdateProfileResponse>('/profile', data, {
+    params: { user_id: userId }
+  });
+  return response.data;
 }
 
 /**

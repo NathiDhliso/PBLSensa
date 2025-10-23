@@ -11,9 +11,7 @@ interface EnvConfig {
   awsRegion: string;
   cognitoUserPoolId: string;
   cognitoClientId: string;
-  enableMockApi: boolean;
   enableApiLogging: boolean;
-  enableMockAuth: boolean;
 }
 
 /**
@@ -52,9 +50,7 @@ export function getEnvConfig(): EnvConfig {
     awsRegion: import.meta.env.VITE_AWS_REGION,
     cognitoUserPoolId: import.meta.env.VITE_COGNITO_USER_POOL_ID,
     cognitoClientId: import.meta.env.VITE_COGNITO_CLIENT_ID,
-    enableMockApi: import.meta.env.VITE_ENABLE_MOCK_API === 'true',
     enableApiLogging: import.meta.env.VITE_ENABLE_API_LOGGING === 'true',
-    enableMockAuth: import.meta.env.VITE_ENABLE_MOCK_AUTH === 'true',
   };
 }
 

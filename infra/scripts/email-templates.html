@@ -1,0 +1,281 @@
+<!-- 
+  COGNITO EMAIL TEMPLATES
+  Copy these templates into AWS Cognito Console
+  
+  Path: AWS Console > Cognito > User Pools > eu-west-1_0kcNGnItf > Messaging > Email
+-->
+
+<!-- ============================================ -->
+<!-- VERIFICATION EMAIL TEMPLATE -->
+<!-- ============================================ -->
+<!-- Subject: Verify your Sensa Learn account -->
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .code-container {
+            background: #f8f9fa;
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin: 30px 0;
+        }
+        .code {
+            font-size: 36px;
+            font-weight: bold;
+            color: #667eea;
+            letter-spacing: 8px;
+            font-family: 'Courier New', monospace;
+        }
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            border-top: 1px solid #e9ecef;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎓 Welcome to Sensa Learn!</h1>
+        </div>
+        <div class="content">
+            <p style="font-size: 16px; margin-bottom: 20px;">Hi there!</p>
+            
+            <p>Thank you for signing up for Sensa Learn. We're excited to have you join our learning community!</p>
+            
+            <p>To complete your registration and start your learning journey, please verify your email address using the code below:</p>
+            
+            <div class="code-container">
+                <div style="font-size: 14px; color: #666; margin-bottom: 10px;">Your Verification Code</div>
+                <div class="code">{####}</div>
+                <div style="font-size: 12px; color: #999; margin-top: 10px;">This code expires in 24 hours</div>
+            </div>
+            
+            <div class="info-box">
+                <strong>💡 What's Next?</strong>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>Enter this code in the verification page</li>
+                    <li>Complete your profile setup</li>
+                    <li>Start exploring courses and learning materials</li>
+                </ul>
+            </div>
+            
+            <p style="margin-top: 30px;">If you didn't create an account with Sensa Learn, you can safely ignore this email.</p>
+            
+            <p style="margin-top: 30px;">
+                <strong>Happy Learning!</strong><br>
+                The Sensa Learn Team
+            </p>
+        </div>
+        <div class="footer">
+            <p style="margin: 0;">© 2025 Sensa Learn. All rights reserved.</p>
+            <p style="margin: 10px 0 0 0; font-size: 12px;">
+                This is an automated message, please do not reply to this email.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+
+
+<!-- ============================================ -->
+<!-- PASSWORD RESET EMAIL TEMPLATE -->
+<!-- ============================================ -->
+<!-- Subject: Reset your Sensa Learn password -->
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .code-container {
+            background: #f8f9fa;
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin: 30px 0;
+        }
+        .code {
+            font-size: 36px;
+            font-weight: bold;
+            color: #667eea;
+            letter-spacing: 8px;
+            font-family: 'Courier New', monospace;
+        }
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            border-top: 1px solid #e9ecef;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 Password Reset Request</h1>
+        </div>
+        <div class="content">
+            <p style="font-size: 16px; margin-bottom: 20px;">Hi there!</p>
+            
+            <p>We received a request to reset your Sensa Learn password.</p>
+            
+            <p>Use the verification code below to reset your password:</p>
+            
+            <div class="code-container">
+                <div style="font-size: 14px; color: #666; margin-bottom: 10px;">Your Reset Code</div>
+                <div class="code">{####}</div>
+                <div style="font-size: 12px; color: #999; margin-top: 10px;">This code expires in 1 hour</div>
+            </div>
+            
+            <div class="warning-box">
+                <strong>⚠️ Security Notice</strong>
+                <p style="margin: 10px 0 0 0;">
+                    If you didn't request a password reset, please ignore this email and ensure your account is secure. 
+                    Your password will not be changed unless you use this code.
+                </p>
+            </div>
+            
+            <p style="margin-top: 30px;">
+                <strong>Need Help?</strong><br>
+                If you're having trouble resetting your password, please contact our support team.
+            </p>
+            
+            <p style="margin-top: 30px;">
+                <strong>Best regards,</strong><br>
+                The Sensa Learn Team
+            </p>
+        </div>
+        <div class="footer">
+            <p style="margin: 0;">© 2025 Sensa Learn. All rights reserved.</p>
+            <p style="margin: 10px 0 0 0; font-size: 12px;">
+                This is an automated message, please do not reply to this email.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+
+
+<!-- ============================================ -->
+<!-- SIMPLE TEXT VERSIONS (Alternative) -->
+<!-- ============================================ -->
+
+<!-- VERIFICATION EMAIL (TEXT) -->
+<!-- Subject: Verify your Sensa Learn account -->
+<!--
+Welcome to Sensa Learn!
+
+Your verification code is: {####}
+
+This code will expire in 24 hours.
+
+Enter this code on the verification page to complete your registration.
+
+If you didn't sign up for Sensa Learn, please ignore this email.
+
+Happy Learning!
+- The Sensa Learn Team
+-->
+
+
+<!-- PASSWORD RESET EMAIL (TEXT) -->
+<!-- Subject: Reset your Sensa Learn password -->
+<!--
+Password Reset Request
+
+Your password reset code is: {####}
+
+This code will expire in 1 hour.
+
+Enter this code to reset your password.
+
+⚠️ If you didn't request this, please ignore this email and ensure your account is secure.
+
+Best regards,
+- The Sensa Learn Team
+-->

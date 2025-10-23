@@ -779,6 +779,31 @@ async def submit_feedback(feedback: dict):
     """Submit user feedback"""
     return {"message": "Feedback received", "id": str(uuid.uuid4())}
 
+# Mock PBL endpoints for local development
+@app.get("/api/pbl/documents/{document_id}/concepts")
+async def get_pbl_concepts(
+    document_id: str,
+    validated: Optional[bool] = Query(None)
+):
+    """Get concepts for a PBL document"""
+    return []
+
+@app.get("/api/pbl/documents/{document_id}/duplicates")
+async def get_pbl_duplicates(document_id: str):
+    """Get duplicate concepts for a PBL document"""
+    return []
+
+@app.get("/api/pbl/visualizations/{document_id}")
+async def get_pbl_visualization(document_id: str):
+    """Get visualization for a PBL document"""
+    return {
+        "id": f"viz-{document_id}",
+        "document_id": document_id,
+        "nodes": [],
+        "edges": [],
+        "layout": "force-directed"
+    }
+
 if __name__ == "__main__":
     import uvicorn
     print("🚀 Starting PBL Backend API on http://localhost:8000")

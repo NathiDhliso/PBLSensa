@@ -15,6 +15,7 @@ import { queryClient } from './config/queryClient';
 // Auth pages
 import { LoginPage } from './pages/auth/LoginPage';
 import { RegisterPage } from './pages/auth/RegisterPage';
+import { ConfirmEmailPage } from './pages/auth/ConfirmEmailPage';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
 
@@ -56,6 +57,14 @@ function AnimatedRoutes() {
           element={
             <PublicRoute>
               <RegisterPage />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/confirm-email"
+          element={
+            <PublicRoute>
+              <ConfirmEmailPage />
             </PublicRoute>
           }
         />
