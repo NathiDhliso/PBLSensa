@@ -6,7 +6,7 @@ Manages user-created analogies connecting concepts to personal experiences.
 
 from typing import List, Optional
 from datetime import datetime
-from backend.models.analogy import (
+from models.analogy import (
     Analogy,
     AnalogyCreate,
     AnalogyUpdate,
@@ -14,7 +14,7 @@ from backend.models.analogy import (
     AnalogyStatistics,
     AnalogyTag
 )
-from backend.services.bedrock_client import BedrockAnalogyGenerator
+from services.bedrock_client import BedrockAnalogyGenerator
 import re
 
 

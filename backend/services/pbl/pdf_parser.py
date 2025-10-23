@@ -8,7 +8,7 @@ import pdfplumber
 from typing import List, Dict, Optional, Tuple
 from pathlib import Path
 import logging
-from backend.models.pbl_concept import TextChunk
+from models.pbl_concept import TextChunk
 
 logger = logging.getLogger(__name__)
 

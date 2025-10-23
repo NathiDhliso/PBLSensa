@@ -35,7 +35,7 @@ import type {
   PBLVisualization,
   NodeUpdate,
   EdgeCreate,
-  LayoutChangeRequest,
+
   LayoutChangeResponse,
   ExportVisualizationResponse,
   DeleteResponse,
@@ -71,6 +71,14 @@ export const pblService = {
    */
   async uploadDocument(courseId: string, file: File, sha256Hash?: string): Promise<UploadDocumentResponse> {
     try {
+      // Validate inputs
+      if (!courseId) {
+        throw new Error('Course ID is required');
+      }
+      if (!file) {
+        throw new Error('File is required');
+      }
+
       // Generate SHA256 hash if not provided
       const hash = sha256Hash || await generateFileHash(file);
 

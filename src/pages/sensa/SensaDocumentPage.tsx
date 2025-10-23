@@ -9,7 +9,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Map, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { usePBLConcepts } from '@/hooks/usePBLConcepts';
-import { useSensaAnalogies } from '@/hooks/useSensaAnalogies';
+import { useChapterAnalogies } from '@/hooks/useChapterAnalogies';
 
 export function SensaDocumentPage() {
   const { documentId } = useParams<{ documentId: string }>();
@@ -17,7 +17,9 @@ export function SensaDocumentPage() {
   const userId = 'user-123'; // TODO: Get from auth context
 
   const { data: concepts, isLoading: conceptsLoading } = usePBLConcepts(documentId!, true);
-  const { analogies, loading: analogiesLoading } = useSensaAnalogies(userId, documentId);
+  const { data: analogyData, isLoading: analogiesLoading } = useChapterAnalogies(documentId!, userId);
+  
+  const analogies = analogyData?.analogies || [];
 
   if (!documentId) {
     return <div>Document ID required</div>;
@@ -28,7 +30,7 @@ export function SensaDocumentPage() {
   };
 
   const conceptsWithAnalogies = concepts?.filter((c) =>
-    analogies.some((a) => a.concept_id === c.id)
+    analogies.some((a) => a.concept === c.term)
   );
 
   return (
@@ -118,7 +120,7 @@ export function SensaDocumentPage() {
         ) : (
           <div className="space-y-4">
             {analogies.map((analogy) => {
-              const concept = concepts?.find((c) => c.id === analogy.concept_id);
+              const concept = concepts?.find((c) => c.term === analogy.concept);
               return (
                 <div key={analogy.id} className="bg-white rounded-lg shadow-lg p-6">
                   <div className="flex items-start gap-4">
@@ -137,20 +139,18 @@ export function SensaDocumentPage() {
                       )}
                       <div>
                         <span className="text-xs font-medium text-pink-600 uppercase">
-                          Your Analogy
+                          Personalized Analogy
                         </span>
-                        <p className="text-gray-800 mt-1">{analogy.user_experience_text}</p>
+                        <p className="text-gray-800 mt-1">{analogy.analogy_text}</p>
                       </div>
-                      {analogy.connection_explanation && (
-                        <div className="mt-3 p-3 bg-purple-50 rounded-lg">
-                          <span className="text-xs font-medium text-purple-700 uppercase">
-                            Connection
-                          </span>
-                          <p className="text-sm text-gray-700 mt-1">
-                            {analogy.connection_explanation}
-                          </p>
-                        </div>
-                      )}
+                      <div className="mt-3 p-3 bg-purple-50 rounded-lg">
+                        <span className="text-xs font-medium text-purple-700 uppercase">
+                          Based on your interest in
+                        </span>
+                        <p className="text-sm text-gray-700 mt-1">
+                          {analogy.based_on_interest}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -17,9 +17,6 @@ export const ProcessingStatusDisplay: React.FC<ProcessingStatusDisplayProps> = (
   const isFailed = status.status === 'failed';
 
   const stages = ['parsing', 'extraction', 'classification', 'deduplication', 'visualization'];
-  const currentStageIndex = status.current_stage
-    ? stages.indexOf(status.current_stage)
-    : -1;
 
   return (
     <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg">
@@ -76,7 +73,7 @@ export const ProcessingStatusDisplay: React.FC<ProcessingStatusDisplayProps> = (
       {/* Stage Progress */}
       {isProcessing && (
         <div className="space-y-3 mb-6">
-          {stages.map((stage, index) => {
+          {stages.map((stage) => {
             const isCompleted = status.stages_completed?.includes(stage);
             const isCurrent = stage === status.current_stage;
             const isPending = !isCompleted && !isCurrent;

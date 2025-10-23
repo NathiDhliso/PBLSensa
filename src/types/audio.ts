@@ -18,6 +18,8 @@ export interface AudioNarrationProps {
   contentId: string;
   autoPlay?: boolean;
   className?: string;
+  onNarrationStart?: () => void;
+  onNarrationStop?: () => void;
 }
 
 export interface ElevenLabsConfig {

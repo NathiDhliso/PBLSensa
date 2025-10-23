@@ -10,17 +10,15 @@ import { ViewSwitcher } from '@/components/sensa/ViewSwitcher';
 import { ConceptMapVisualization } from '@/components/conceptMap/ConceptMapVisualization';
 import { SensaLearnMap } from '@/components/sensa/SensaLearnMap';
 import { Button } from '@/components/ui';
-import { useSensaAnalogies } from '@/hooks/useSensaAnalogies';
+import { useChapterAnalogies } from '@/hooks/useChapterAnalogies';
 
 export const ConceptMapPage: React.FC = () => {
   const { documentId } = useParams<{ documentId: string }>();
   const navigate = useNavigate();
   const [view, setView] = useState<'pbl' | 'sensa'>('pbl');
   
-  // Mock user ID - in production, get from auth context
-  const userId = 'user-123';
-  
-  const { analogies } = useSensaAnalogies(userId, documentId);
+  const { data: analogiesData } = useChapterAnalogies(documentId || '', '1');
+  const analogies = analogiesData?.analogies || [];
   
   // Mock concept map data - replace with real API call
   const conceptMap: any = {
@@ -105,13 +103,13 @@ export const ConceptMapPage: React.FC = () => {
         ) : (
           <SensaLearnMap
             conceptMap={conceptMap}
-            analogies={analogies.map(a => ({
+            analogies={analogies.map((a: any) => ({
               id: a.id,
               analogy_id: a.id,
-              concept_id: a.concept_id,
-              experience_text: a.user_experience_text,
-              strength: a.strength,
-              tags: a.tags,
+              concept_id: a.concept_id || '',
+              experience_text: a.user_experience_text || a.analogy_text || '',
+              strength: a.strength || 0,
+              tags: a.tags || [],
             }))}
             mode="overlay"
           />

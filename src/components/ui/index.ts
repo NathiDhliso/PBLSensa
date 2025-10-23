@@ -32,3 +32,7 @@ export type { LoadingButtonProps } from './LoadingButton';
 
 export { FormError } from './FormError';
 export type { FormErrorProps } from './FormError';
+
+export { LoadingState } from './LoadingState';
+
+export { EmptyState } from './EmptyState';

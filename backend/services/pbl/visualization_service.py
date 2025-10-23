@@ -9,7 +9,7 @@ import logging
 from typing import Optional, Dict
 from uuid import UUID
 from datetime import datetime
-from backend.models.pbl_visualization import (
+from models.pbl_visualization import (
     PBLVisualization,
     VisualizationCreate,
     VisualizationUpdate,

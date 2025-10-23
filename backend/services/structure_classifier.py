@@ -7,9 +7,9 @@ Uses pattern matching + Claude validation.
 
 import re
 from typing import List, Dict, Optional, Tuple
-from backend.models.concept import Concept
-from backend.models.relationship import Relationship, RelationshipType, StructureCategory
-from backend.services.bedrock_client import BedrockAnalogyGenerator
+from models.concept import Concept
+from models.relationship import Relationship, RelationshipType, StructureCategory
+from services.bedrock_client import BedrockAnalogyGenerator
 import json
 
 

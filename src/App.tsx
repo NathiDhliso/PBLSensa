@@ -5,6 +5,7 @@ import { ThemeToggle } from './components/ThemeToggle';
 import { AuthProvider } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { MusicPlayerProvider } from './contexts/MusicPlayerContext';
+import { AudioCoordinationProvider } from './contexts/AudioCoordinationContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ProtectedRoute } from './components/routing/ProtectedRoute';
 import { PublicRoute } from './components/routing/PublicRoute';
@@ -260,18 +261,20 @@ function App() {
         <AuthProvider>
           <ToastProvider>
             <MusicPlayerProvider>
-              <div className="min-h-screen bg-gradient-to-br from-purple-50 via-orange-50 to-pink-50
-                              dark:from-dark-bg-primary dark:via-dark-bg-secondary dark:to-[#241539]">
-                
-                {/* Theme Toggle */}
-                <div className="fixed top-4 right-4 z-50">
-                  <ThemeToggle />
+              <AudioCoordinationProvider>
+                <div className="min-h-screen bg-gradient-to-br from-purple-50 via-orange-50 to-pink-50
+                                dark:from-dark-bg-primary dark:via-dark-bg-secondary dark:to-[#241539]">
+                  
+                  {/* Theme Toggle */}
+                  <div className="fixed top-4 right-4 z-50">
+                    <ThemeToggle />
+                  </div>
+                  
+                  <BrowserRouter>
+                    <AnimatedRoutes />
+                  </BrowserRouter>
                 </div>
-                
-                <BrowserRouter>
-                  <AnimatedRoutes />
-                </BrowserRouter>
-              </div>
+              </AudioCoordinationProvider>
             </MusicPlayerProvider>
           </ToastProvider>
         </AuthProvider>

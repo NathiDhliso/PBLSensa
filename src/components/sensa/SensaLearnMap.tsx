@@ -1,5 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import * as d3 from 'd3';
+import { select } from 'd3-selection';
+import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide } from 'd3-force';
+import { zoom as d3Zoom } from 'd3-zoom';
+import { drag as d3Drag } from 'd3-drag';
+import { interpolateWarm } from 'd3-scale-chromatic';
+import type { SimulationNodeDatum, SimulationLinkDatum } from 'd3-force';
 import { ConceptMap, Concept } from '../../types/conceptMap';
 
 interface AnalogyNode {
@@ -21,7 +26,7 @@ interface SensaLearnMapProps {
   mode?: 'split' | 'overlay' | 'tabbed';
 }
 
-interface D3ConceptNode extends d3.SimulationNodeDatum {
+interface D3ConceptNode extends SimulationNodeDatum {
   id: string;
   type: 'concept';
   concept: Concept;
@@ -29,7 +34,7 @@ interface D3ConceptNode extends d3.SimulationNodeDatum {
   y?: number;
 }
 
-interface D3AnalogyNode extends d3.SimulationNodeDatum {
+interface D3AnalogyNode extends SimulationNodeDatum {
   id: string;
   type: 'analogy';
   analogy: AnalogyNode;
@@ -39,13 +44,13 @@ interface D3AnalogyNode extends d3.SimulationNodeDatum {
 
 type D3Node = D3ConceptNode | D3AnalogyNode;
 
-interface D3Link extends d3.SimulationLinkDatum<D3Node> {
+interface D3Link extends SimulationLinkDatum<D3Node> {
   source: D3Node | string;
   target: D3Node | string;
   strength: number;
 }
 
-export const SensaLearnMap: React.FC<SensaLearnMapProps> = ({
+const SensaLearnMapComponent = ({
   conceptMap,
   analogies,
   onConceptClick,
@@ -53,7 +58,7 @@ export const SensaLearnMap: React.FC<SensaLearnMapProps> = ({
   onConceptHover,
   onAnalogyHover,
   // mode = 'overlay', // Reserved for future implementation
-}) => {
+}: SensaLearnMapProps) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
@@ -108,13 +113,13 @@ export const SensaLearnMap: React.FC<SensaLearnMapProps> = ({
   useEffect(() => {
     if (!svgRef.current || allNodes.length === 0) return;
 
-    const svg = d3.select(svgRef.current);
+    const svg = select(svgRef.current);
     svg.selectAll('*').remove();
 
     const { width, height } = dimensions;
 
     // Create zoom behavior
-    const zoom = d3.zoom<SVGSVGElement, unknown>()
+    const zoom = d3Zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.1, 4])
       .on('zoom', (event) => {
         g.attr('transform', event.transform);
@@ -126,13 +131,13 @@ export const SensaLearnMap: React.FC<SensaLearnMapProps> = ({
     const g = svg.append('g');
 
     // Create force simulation
-    const simulation = d3.forceSimulation<D3Node>(allNodes)
-      .force('link', d3.forceLink<D3Node, D3Link>(links)
+    const simulation = forceSimulation<D3Node>(allNodes)
+      .force('link', forceLink<D3Node, D3Link>(links)
         .id(d => d.id)
         .distance(150))
-      .force('charge', d3.forceManyBody().strength(-200))
-      .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('collision', d3.forceCollide().radius(50));
+      .force('charge', forceManyBody().strength(-200))
+      .force('center', forceCenter(width / 2, height / 2))
+      .force('collision', forceCollide().radius(50));
 
     // Create connection lines (dashed)
     const link = g.append('g')
@@ -150,14 +155,14 @@ export const SensaLearnMap: React.FC<SensaLearnMapProps> = ({
       .data(allNodes)
       .join('g')
       .attr('cursor', 'pointer')
-      .call(d3.drag<SVGGElement, D3Node>()
+      .call(d3Drag<SVGGElement, D3Node>()
         .on('start', dragstarted)
         .on('drag', dragged)
         .on('end', dragended) as any);
 
     // Add circles/shapes to nodes
     node.each(function(d) {
-      const nodeGroup = d3.select(this);
+      const nodeGroup = select(this);
       
       if (d.type === 'concept') {
         // PBL concept nodes - blue, read-only
@@ -180,7 +185,7 @@ export const SensaLearnMap: React.FC<SensaLearnMapProps> = ({
       } else {
         // Analogy nodes - warm colors based on strength
         const strength = d.analogy.strength;
-        const warmColor = d3.interpolateWarm(strength / 5); // 1-5 scale
+        const warmColor = interpolateWarm(strength / 5); // 1-5 scale
         
         nodeGroup.append('circle')
           .attr('r', 25)
@@ -326,3 +331,15 @@ export const SensaLearnMap: React.FC<SensaLearnMapProps> = ({
     </div>
   );
 };
+
+export const SensaLearnMap = React.memo(
+  SensaLearnMapComponent,
+  (prevProps, nextProps) => {
+    // Custom comparison for performance
+    return (
+      prevProps.conceptMap.course_id === nextProps.conceptMap.course_id &&
+      prevProps.analogies.length === nextProps.analogies.length &&
+      prevProps.conceptMap.chapters.length === nextProps.conceptMap.chapters.length
+    );
+  }
+);

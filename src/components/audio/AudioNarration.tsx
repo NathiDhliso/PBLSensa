@@ -16,6 +16,8 @@ export function AudioNarration({
   contentId,
   autoPlay = false,
   className = '',
+  onNarrationStart,
+  onNarrationStop,
 }: AudioNarrationProps) {
   const {
     isLoading,
@@ -26,6 +28,23 @@ export function AudioNarration({
     pause,
     updateTime,
   } = useAudioNarration(text, contentId);
+
+  // Handle play with callback
+  const handlePlay = () => {
+    play();
+    onNarrationStart?.();
+  };
+
+  // Handle pause/stop with callback
+  const handlePause = () => {
+    pause();
+    onNarrationStop?.();
+  };
+
+  // Handle audio end
+  const handleEnded = () => {
+    onNarrationStop?.();
+  };
 
   // Auto-generate audio if autoPlay is true
   useEffect(() => {
@@ -75,8 +94,9 @@ export function AudioNarration({
       {audioUrl && !error && (
         <AudioPlayer
           audioUrl={audioUrl}
-          onPlay={play}
-          onPause={pause}
+          onPlay={handlePlay}
+          onPause={handlePause}
+          onEnded={handleEnded}
           onTimeUpdate={updateTime}
         />
       )}

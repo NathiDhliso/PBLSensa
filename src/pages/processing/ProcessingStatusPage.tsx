@@ -60,13 +60,8 @@ export const ProcessingStatusPage = () => {
   };
 
   const handleViewConceptMap = () => {
-    // Navigate to PBL document workflow if we have document_id
-    if (status?.document_id) {
-      navigate(`/pbl/document/${status.document_id}`);
-    } else {
-      // Fallback to courses
-      navigate('/pbl/courses');
-    }
+    // Navigate to PBL courses - document_id is not part of ProcessingStatus type
+    navigate('/pbl/courses');
   };
 
   const handleTryAgain = () => {

@@ -1,5 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import * as d3 from 'd3';
+import { select } from 'd3-selection';
+import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide } from 'd3-force';
+import { zoom as d3Zoom, zoomIdentity, ZoomBehavior } from 'd3-zoom';
+import { drag as d3Drag } from 'd3-drag';
+import { stratify, tree } from 'd3-hierarchy';
+import type { SimulationNodeDatum, SimulationLinkDatum } from 'd3-force';
 import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { ConceptMap, Concept, Relationship } from '../../types/conceptMap';
 import { Button } from '../ui/Button';
@@ -17,20 +22,20 @@ interface ConceptMapVisualizationProps {
   onLayoutChange?: (layout: LayoutType) => void;
 }
 
-interface D3Node extends d3.SimulationNodeDatum {
+interface D3Node extends SimulationNodeDatum {
   id: string;
   concept: Concept;
   x?: number;
   y?: number;
 }
 
-interface D3Link extends d3.SimulationLinkDatum<D3Node> {
+interface D3Link extends SimulationLinkDatum<D3Node> {
   source: D3Node | string;
   target: D3Node | string;
   relationship: Relationship;
 }
 
-export const ConceptMapVisualization: React.FC<ConceptMapVisualizationProps> = ({
+const ConceptMapVisualizationComponent = ({
   conceptMap,
   onNodeClick,
   onNodeHover,
@@ -38,11 +43,11 @@ export const ConceptMapVisualization: React.FC<ConceptMapVisualizationProps> = (
   showExamRelevanceFilter = true,
   layout = 'force',
   onLayoutChange,
-}) => {
+}: ConceptMapVisualizationProps) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
-  const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown>>();
+  const zoomRef = useRef<ZoomBehavior<SVGSVGElement, unknown>>();
   const [filterHighRelevance, setFilterHighRelevance] = useState(false);
   const [currentLayout, setCurrentLayout] = useState<LayoutType>(layout);
 
@@ -121,13 +126,13 @@ export const ConceptMapVisualization: React.FC<ConceptMapVisualizationProps> = (
   useEffect(() => {
     if (!svgRef.current || nodes.length === 0) return;
 
-    const svg = d3.select(svgRef.current);
+    const svg = select(svgRef.current);
     svg.selectAll('*').remove();
 
     const { width, height } = dimensions;
 
     // Create zoom behavior
-    const zoom = d3.zoom<SVGSVGElement, unknown>()
+    const zoom = d3Zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.1, 4])
       .on('zoom', (event) => {
         g.attr('transform', event.transform);
@@ -159,20 +164,20 @@ export const ConceptMapVisualization: React.FC<ConceptMapVisualizationProps> = (
       });
 
     // Apply layout based on selected type
-    let simulation: d3.Simulation<D3Node, D3Link> | null = null;
+    let simulation: ReturnType<typeof forceSimulation<D3Node>> | null = null;
     
     if (currentLayout === 'force' || currentLayout === 'hybrid') {
       // Force-directed layout
-      simulation = d3.forceSimulation<D3Node>(nodes)
-        .force('link', d3.forceLink<D3Node, D3Link>(links)
+      simulation = forceSimulation<D3Node>(nodes)
+        .force('link', forceLink<D3Node, D3Link>(links)
           .id(d => d.id)
           .distance(100))
-        .force('charge', d3.forceManyBody().strength(-300))
-        .force('center', d3.forceCenter(width / 2, height / 2))
-        .force('collision', d3.forceCollide().radius(40));
+        .force('charge', forceManyBody().strength(-300))
+        .force('center', forceCenter(width / 2, height / 2))
+        .force('collision', forceCollide().radius(40));
     } else if (currentLayout === 'tree') {
       // Tree layout for hierarchical structures
-      const hierarchy = d3.stratify<D3Node>()
+      const hierarchy = stratify<D3Node>()
         .id(d => d.id)
         .parentId(d => {
           // Find parent from links
@@ -180,7 +185,7 @@ export const ConceptMapVisualization: React.FC<ConceptMapVisualizationProps> = (
           return parentLink ? (typeof parentLink.source === 'string' ? parentLink.source : (parentLink.source as D3Node).id) : null;
         })(nodes);
       
-      const treeLayout = d3.tree<D3Node>()
+      const treeLayout = tree<D3Node>()
         .size([width - 100, height - 100]);
       
       const root = treeLayout(hierarchy as any);
@@ -285,7 +290,7 @@ export const ConceptMapVisualization: React.FC<ConceptMapVisualizationProps> = (
       .data(nodes)
       .join('g')
       .attr('cursor', 'pointer')
-      .call(d3.drag<SVGGElement, D3Node>()
+      .call(d3Drag<SVGGElement, D3Node>()
         .on('start', dragstarted)
         .on('drag', dragged)
         .on('end', dragended) as any);
@@ -365,7 +370,7 @@ export const ConceptMapVisualization: React.FC<ConceptMapVisualizationProps> = (
       })
       .on('mouseenter', (event, d) => {
         onNodeHover?.(d.concept);
-        const circle = d3.select(event.currentTarget).select('circle');
+        const circle = select(event.currentTarget).select('circle');
         const relevance = getConceptRelevance(d.concept.exam_relevant);
         const style = getNodeStyle(relevance);
         const baseRadius = 20 * style.scale;
@@ -382,7 +387,7 @@ export const ConceptMapVisualization: React.FC<ConceptMapVisualizationProps> = (
       })
       .on('mouseleave', (event, d) => {
         onNodeHover?.(null);
-        const circle = d3.select(event.currentTarget).select('circle');
+        const circle = select(event.currentTarget).select('circle');
         const relevance = getConceptRelevance(d.concept.exam_relevant);
         const style = getNodeStyle(relevance);
         const baseRadius = 20 * style.scale;
@@ -441,7 +446,7 @@ export const ConceptMapVisualization: React.FC<ConceptMapVisualizationProps> = (
 
   const handleZoomIn = () => {
     if (svgRef.current && zoomRef.current) {
-      d3.select(svgRef.current)
+      select(svgRef.current)
         .transition()
         .duration(300)
         .call(zoomRef.current.scaleBy, 1.3);
@@ -450,7 +455,7 @@ export const ConceptMapVisualization: React.FC<ConceptMapVisualizationProps> = (
 
   const handleZoomOut = () => {
     if (svgRef.current && zoomRef.current) {
-      d3.select(svgRef.current)
+      select(svgRef.current)
         .transition()
         .duration(300)
         .call(zoomRef.current.scaleBy, 0.7);
@@ -459,10 +464,10 @@ export const ConceptMapVisualization: React.FC<ConceptMapVisualizationProps> = (
 
   const handleResetView = () => {
     if (svgRef.current && zoomRef.current) {
-      d3.select(svgRef.current)
+      select(svgRef.current)
         .transition()
         .duration(500)
-        .call(zoomRef.current.transform, d3.zoomIdentity);
+        .call(zoomRef.current.transform, zoomIdentity);
     }
   };
 
@@ -646,3 +651,16 @@ export const ConceptMapVisualization: React.FC<ConceptMapVisualizationProps> = (
     </div>
   );
 };
+
+export const ConceptMapVisualization = React.memo(
+  ConceptMapVisualizationComponent,
+  (prevProps, nextProps) => {
+    // Custom comparison for performance
+    return (
+      prevProps.conceptMap.course_id === nextProps.conceptMap.course_id &&
+      prevProps.conceptMap.chapters.length === nextProps.conceptMap.chapters.length &&
+      prevProps.layout === nextProps.layout &&
+      prevProps.highlightedNodes === nextProps.highlightedNodes
+    );
+  }
+);

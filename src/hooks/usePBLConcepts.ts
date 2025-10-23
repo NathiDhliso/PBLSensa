@@ -4,7 +4,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { pblService } from '@/services/pblService';
-import type { Concept, ConceptValidation, ConceptUpdate } from '@/types/pbl';
+import type { ConceptValidation, ConceptUpdate } from '@/types/pbl';
 
 export function usePBLConcepts(
   documentId: string,

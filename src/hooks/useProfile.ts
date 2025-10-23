@@ -8,6 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/services/api';
 import { UserProfile } from '@/types/profile';
 import { getMockProfile } from '@/services/mockData';
+import { CACHE_TIMES, QUERY_KEYS } from '@/config/cacheConfig';
 
 /**
  * Fetch user profile from API with mock fallback
@@ -34,9 +35,9 @@ async function fetchProfile(): Promise<UserProfile> {
  */
 export function useProfile() {
   return useQuery({
-    queryKey: ['profile'],
+    queryKey: [QUERY_KEYS.PROFILE],
     queryFn: fetchProfile,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: CACHE_TIMES.PROFILE,
     gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
     refetchOnWindowFocus: false,
     retry: 1, // Reduced retries since we have mock fallback

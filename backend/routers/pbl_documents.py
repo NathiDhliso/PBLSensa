@@ -11,19 +11,19 @@ from datetime import datetime
 import os
 import tempfile
 
-from backend.models.pbl_concept import (
-    ConceptResponse,
-    ConceptValidation,
+from models.pbl_concept import (
+    Concept,
+    ConceptValidationRequest,
     ConceptUpdate
 )
-from backend.models.pbl_relationship import RelationshipResponse, RelationshipCreate
-from backend.models.pbl_visualization import (
-    VisualizationResponse,
+from models.pbl_relationship import Relationship, RelationshipCreate
+from models.pbl_visualization import (
+    PBLVisualization,
     NodeUpdate,
     EdgeCreate,
     LayoutChangeRequest
 )
-from backend.services.pbl import (
+from services.pbl import (
     get_pbl_pipeline,
     get_concept_service,
     get_relationship_service,

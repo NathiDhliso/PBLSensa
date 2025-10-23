@@ -3,7 +3,7 @@ PBL Backend API - Local Development Server
 FastAPI application for Perspective-Based Learning platform
 """
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Query, Body
+from fastapi import FastAPI, HTTPException, UploadFile, File, Query, Body, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict
@@ -22,7 +22,7 @@ from services.cost_tracker import CostTracker
 from routers.sensa_profile import router as profile_router
 from routers.sensa_questions import router as questions_router
 from routers.sensa_analogies import router as analogies_router
-from routers.pbl_documents import router as pbl_router
+# from routers.pbl_documents import router as pbl_router  # Temporarily disabled
 
 app = FastAPI(title="PBL API", version="2.0.0")
 
@@ -32,7 +32,7 @@ app.include_router(questions_router)
 app.include_router(analogies_router)
 
 # Include PBL router
-app.include_router(pbl_router)
+# app.include_router(pbl_router)  # Temporarily disabled due to import issues
 
 # CORS configuration
 app.add_middleware(
@@ -233,10 +233,15 @@ async def get_course_documents(course_id: str):
 
 @app.post("/upload-document")
 async def upload_document(
-    course_id: str,
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    course_id: str = Form(...),
+    sha256_hash: Optional[str] = Form(None)
 ):
     """Upload a document to a course"""
+    # Validate file type
+    if not file.filename.endswith('.pdf'):
+        raise HTTPException(status_code=422, detail="Only PDF files are supported")
+    
     if course_id not in courses_db:
         raise HTTPException(status_code=404, detail="Course not found")
     
@@ -248,8 +253,9 @@ async def upload_document(
         id=doc_id,
         course_id=course_id,
         filename=file.filename,
-        status="processing",
-        uploaded_at=datetime.now().isoformat()
+        status="completed",  # Mark as completed immediately for mock
+        uploaded_at=datetime.now().isoformat(),
+        processed_at=datetime.now().isoformat()
     )
     
     documents_db[doc_id] = document
@@ -260,7 +266,7 @@ async def upload_document(
     return {
         "task_id": task_id,
         "document_id": doc_id,
-        "status": "processing"
+        "status": "completed"
     }
 
 @app.delete("/documents/{document_id}")

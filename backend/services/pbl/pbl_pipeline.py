@@ -9,7 +9,7 @@ import logging
 from typing import Dict, Optional, Callable
 from uuid import UUID
 from datetime import datetime
-from backend.services.pbl import (
+from services.pbl import (
     get_pdf_parser,
     get_concept_extractor,
     get_structure_classifier,
@@ -18,9 +18,9 @@ from backend.services.pbl import (
     get_relationship_service,
     get_visualization_service
 )
-from backend.services.rate_limiter import RateLimiter
-from backend.services.cost_tracker import CostTracker
-from backend.services.cache_manager import CacheManager
+from services.rate_limiter import RateLimiter
+from services.cost_tracker import CostTracker
+from services.cache_manager import CacheManager
 
 logger = logging.getLogger(__name__)
 

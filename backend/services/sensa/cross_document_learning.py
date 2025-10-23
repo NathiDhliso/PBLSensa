@@ -6,9 +6,9 @@ Suggests relevant analogies from user's past documents for new concepts.
 
 from typing import List, Optional
 from dataclasses import dataclass
-from backend.models.concept import Concept
-from backend.models.analogy import Analogy
-from backend.services.sensa.analogy_service import AnalogyService
+from models.concept import Concept
+from models.analogy import Analogy
+from services.sensa.analogy_service import AnalogyService
 
 
 @dataclass
@@ -261,7 +261,7 @@ class CrossDocumentLearningService:
         Returns:
             Newly created Analogy
         """
-        from backend.models.analogy import AnalogyCreate
+        from models.analogy import AnalogyCreate
         
         # Create new analogy based on the suggestion
         new_analogy_data = AnalogyCreate(

@@ -8,10 +8,10 @@ import json
 import random
 from typing import List, Dict, Optional
 from pathlib import Path
-from backend.models.concept import Concept
-from backend.models.user_profile import UserProfile
-from backend.models.question import Question, QuestionType, QuestionTemplate
-from backend.services.bedrock_client import BedrockAnalogyGenerator
+from models.concept import Concept
+from models.user_profile import UserProfile
+from models.question import Question, QuestionType, QuestionTemplate
+from services.bedrock_client import BedrockAnalogyGenerator
 
 
 class AnalogyQuestionGenerator:

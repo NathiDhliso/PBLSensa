@@ -98,5 +98,5 @@ class ConceptWithRelationships(Concept):
 
 
 # For type hints
-from backend.models.relationship import Relationship
+from models.relationship import Relationship
 ConceptWithRelationships.model_rebuild()

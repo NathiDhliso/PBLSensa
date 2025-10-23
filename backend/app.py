@@ -114,56 +114,84 @@ def get_course_documents(course_id):
 @app.route('/upload-document', methods=['POST'])
 def upload_document():
     """Upload a document to a course"""
-    # Try to get course_id from both form data and JSON
-    course_id = request.form.get('course_id') or request.form.get('courseId')
-    
-    # If not in form, try JSON body
-    if not course_id and request.is_json:
-        data = request.get_json()
-        course_id = data.get('course_id') or data.get('courseId')
-    
-    print(f"[DEBUG] Received course_id: {course_id}")
-    print(f"[DEBUG] Form data: {dict(request.form)}")
-    print(f"[DEBUG] Files: {list(request.files.keys())}")
-    
-    if not course_id:
-        return jsonify({"error": "course_id is required"}), 400
+    try:
+        # Try to get course_id from both form data and JSON
+        course_id = request.form.get('course_id') or request.form.get('courseId')
         
-    if course_id not in courses_db:
-        return jsonify({"error": f"Course {course_id} not found"}), 404
-    
-    if 'file' not in request.files:
-        return jsonify({"error": "No file provided"}), 400
-    
-    file = request.files['file']
-    
-    if not file.filename:
-        return jsonify({"error": "No file selected"}), 400
-    
-    # Create document record
-    doc_id = f"doc-{len(documents_db) + 1}"
-    task_id = str(uuid.uuid4())
-    now = datetime.now().isoformat()
-    
-    document = {
-        "id": doc_id,
-        "course_id": course_id,
-        "filename": file.filename,
-        "status": "completed",  # Changed from "processing" to "completed"
-        "uploaded_at": now,
-        "processed_at": now  # Set processed time immediately
-    }
-    
-    documents_db[doc_id] = document
-    
-    # Update course document count
-    courses_db[course_id]['document_count'] += 1
-    
-    return jsonify({
-        "task_id": task_id,
-        "document_id": doc_id,
-        "status": "completed"  # Return completed status immediately
-    })
+        # If not in form, try JSON body
+        if not course_id and request.is_json:
+            data = request.get_json()
+            course_id = data.get('course_id') or data.get('courseId')
+        
+        print(f"[DEBUG] Received course_id: {course_id}")
+        print(f"[DEBUG] Form data: {dict(request.form)}")
+        print(f"[DEBUG] Files: {list(request.files.keys())}")
+        print(f"[DEBUG] Content-Type: {request.content_type}")
+        
+        if not course_id:
+            return jsonify({
+                "detail": "course_id is required",
+                "message": "course_id is required"
+            }), 422
+            
+        if course_id not in courses_db:
+            return jsonify({
+                "detail": f"Course {course_id} not found",
+                "message": f"Course {course_id} not found"
+            }), 404
+        
+        if 'file' not in request.files:
+            return jsonify({
+                "detail": "No file provided",
+                "message": "No file provided"
+            }), 422
+        
+        file = request.files['file']
+        
+        if not file.filename:
+            return jsonify({
+                "detail": "No file selected",
+                "message": "No file selected"
+            }), 422
+        
+        if not file.filename.endswith('.pdf'):
+            return jsonify({
+                "detail": "Only PDF files are supported",
+                "message": "Only PDF files are supported"
+            }), 422
+        
+        # Create document record
+        doc_id = f"doc-{len(documents_db) + 1}"
+        task_id = str(uuid.uuid4())
+        now = datetime.now().isoformat()
+        
+        document = {
+            "id": doc_id,
+            "course_id": course_id,
+            "filename": file.filename,
+            "status": "completed",  # Changed from "processing" to "completed"
+            "uploaded_at": now,
+            "processed_at": now  # Set processed time immediately
+        }
+        
+        documents_db[doc_id] = document
+        
+        # Update course document count
+        courses_db[course_id]['document_count'] += 1
+        
+        return jsonify({
+            "task_id": task_id,
+            "document_id": doc_id,
+            "status": "completed"  # Return completed status immediately
+        })
+    except Exception as e:
+        print(f"[ERROR] Upload failed: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "detail": f"Upload failed: {str(e)}",
+            "message": f"Upload failed: {str(e)}"
+        }), 500
 
 @app.route('/documents/<document_id>', methods=['DELETE'])
 def delete_document(document_id):

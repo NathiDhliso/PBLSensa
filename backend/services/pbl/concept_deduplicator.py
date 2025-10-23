@@ -8,7 +8,7 @@ Leverages pgvector for efficient similarity search.
 import logging
 from typing import List, Optional, Tuple
 from uuid import UUID
-from backend.models.pbl_concept import Concept, DuplicatePair, ConceptMergeRequest
+from models.pbl_concept import Concept, DuplicatePair, ConceptMergeRequest
 import re
 
 logger = logging.getLogger(__name__)

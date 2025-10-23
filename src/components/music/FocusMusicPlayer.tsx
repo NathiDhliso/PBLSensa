@@ -2,15 +2,25 @@
  * FocusMusicPlayer Component
  * 
  * Floating music player widget for Sensa Learn portal
+ * Only visible in Sensa Learn view
  */
 
+import { useLocation } from 'react-router-dom';
 import { Music, X, Minimize2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMusicPlayer } from '@/contexts/MusicPlayerContext';
 import { MusicWidget } from './MusicWidget';
 
 export function FocusMusicPlayer() {
+  const location = useLocation();
   const { isExpanded, toggleExpanded } = useMusicPlayer();
+  
+  // Only show in Sensa Learn view
+  const isSensaView = location.pathname.startsWith('/sensa');
+  
+  if (!isSensaView) {
+    return null;
+  }
 
   return (
     <div className="fixed bottom-4 right-4 z-40">

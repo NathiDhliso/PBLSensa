@@ -6,7 +6,7 @@ Manages user profiles for personalized analogy generation.
 
 from typing import Optional
 from datetime import datetime
-from backend.models.user_profile import (
+from models.user_profile import (
     UserProfile,
     UserProfileCreate,
     UserProfileUpdate,

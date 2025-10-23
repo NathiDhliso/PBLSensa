@@ -5,12 +5,12 @@ Endpoints for managing user profiles.
 """
 
 from fastapi import APIRouter, HTTPException, Depends
-from backend.models.user_profile import (
+from models.user_profile import (
     UserProfileResponse,
     UserProfileCreate,
     UserProfileUpdate
 )
-from backend.services.sensa.user_profile_service import UserProfileService
+from services.sensa.user_profile_service import UserProfileService
 
 router = APIRouter(prefix="/api/sensa/users", tags=["Sensa Profile"])
 

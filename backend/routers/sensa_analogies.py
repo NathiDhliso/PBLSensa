@@ -6,14 +6,14 @@ Endpoints for creating and managing analogies.
 
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
-from backend.models.analogy import (
+from models.analogy import (
     AnalogyCreate,
     AnalogyUpdate,
     AnalogyResponse,
     AnalogyStatistics
 )
-from backend.services.sensa.analogy_service import AnalogyService
-from backend.services.sensa.cross_document_learning import (
+from services.sensa.analogy_service import AnalogyService
+from services.sensa.cross_document_learning import (
     CrossDocumentLearningService,
     AnalogyySuggestion
 )
@@ -172,7 +172,7 @@ async def suggest_analogies(
     Returns reusable analogies from similar concepts the user has learned before.
     """
     # TODO: Get concept from database
-    from backend.models.concept import Concept
+    from models.concept import Concept
     from datetime import datetime
     
     concept = Concept(

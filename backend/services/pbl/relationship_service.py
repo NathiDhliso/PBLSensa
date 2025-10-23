@@ -8,7 +8,7 @@ import logging
 from typing import List, Optional
 from uuid import UUID
 from datetime import datetime
-from backend.models.pbl_relationship import (
+from models.pbl_relationship import (
     Relationship,
     RelationshipCreate,
     RelationshipUpdate,

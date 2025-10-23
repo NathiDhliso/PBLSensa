@@ -10,15 +10,15 @@ Integrated from backend/services/structure_classifier.py for PBL View.
 import re
 import logging
 from typing import List, Dict, Optional
-from backend.models.pbl_concept import Concept
-from backend.models.pbl_relationship import (
+from models.pbl_concept import Concept
+from models.pbl_relationship import (
     Relationship,
     RelationshipType,
     StructureCategory,
     PatternMatchResult,
     RelationshipDetectionResult
 )
-from backend.services.bedrock_client import BedrockAnalogyGenerator
+from services.bedrock_client import BedrockAnalogyGenerator
 import json
 
 logger = logging.getLogger(__name__)

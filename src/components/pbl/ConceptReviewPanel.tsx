@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckCircle, XCircle, Filter } from 'lucide-react';
+import { CheckCircle, Filter } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { ConceptCard } from './ConceptCard';
 import { usePBLConcepts, useValidateConcepts } from '@/hooks/usePBLConcepts';

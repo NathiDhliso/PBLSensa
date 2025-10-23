@@ -1,7 +1,8 @@
 /**
- * BadgeShowcase Component
+ * BadgeShowcase Component (Learning Journey Display)
  * 
- * Grid display of all badges (earned and locked)
+ * Professional display of learning milestones
+ * Refactored to use milestone terminology while maintaining backward compatibility
  */
 
 import { useState } from 'react';
@@ -16,19 +17,24 @@ interface BadgeShowcaseProps {
 export function BadgeShowcase({ badges }: BadgeShowcaseProps) {
   const [selectedBadge, setSelectedBadge] = useState<BadgeWithProgress | null>(null);
 
-  const earnedBadges = badges.filter(b => b.isUnlocked);
-  const lockedBadges = badges.filter(b => !b.isUnlocked);
+  const achievedMilestones = badges.filter(b => b.isUnlocked);
+  const inProgressMilestones = badges.filter(b => !b.isUnlocked);
 
   return (
     <div className="space-y-8">
-      {/* Earned Badges */}
-      {earnedBadges.length > 0 && (
+      {/* Achieved Milestones */}
+      {achievedMilestones.length > 0 && (
         <div>
-          <h3 className="text-xl font-bold text-text-dark dark:text-dark-text-primary mb-4">
-            Earned Badges ({earnedBadges.length})
-          </h3>
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold text-text-dark dark:text-dark-text-primary">
+              Achieved Milestones
+            </h3>
+            <p className="text-sm text-text-medium dark:text-dark-text-secondary mt-1">
+              {achievedMilestones.length} {achievedMilestones.length === 1 ? 'milestone' : 'milestones'} reached in your learning journey
+            </p>
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {earnedBadges.map(badge => (
+            {achievedMilestones.map(badge => (
               <BadgeCard
                 key={badge.id}
                 badge={badge}
@@ -39,14 +45,19 @@ export function BadgeShowcase({ badges }: BadgeShowcaseProps) {
         </div>
       )}
 
-      {/* Locked Badges */}
-      {lockedBadges.length > 0 && (
+      {/* In Progress Milestones */}
+      {inProgressMilestones.length > 0 && (
         <div>
-          <h3 className="text-xl font-bold text-text-dark dark:text-dark-text-primary mb-4">
-            Locked Badges ({lockedBadges.length})
-          </h3>
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold text-text-dark dark:text-dark-text-primary">
+              In Progress
+            </h3>
+            <p className="text-sm text-text-medium dark:text-dark-text-secondary mt-1">
+              Continue learning to unlock these milestones
+            </p>
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {lockedBadges.map(badge => (
+            {inProgressMilestones.map(badge => (
               <BadgeCard
                 key={badge.id}
                 badge={badge}
@@ -57,7 +68,7 @@ export function BadgeShowcase({ badges }: BadgeShowcaseProps) {
         </div>
       )}
 
-      {/* Badge Detail Modal */}
+      {/* Milestone Detail Modal */}
       {selectedBadge && (
         <BadgeModal
           badge={selectedBadge}

@@ -5,13 +5,13 @@ Endpoints for generating and managing questions.
 """
 
 from fastapi import APIRouter, HTTPException
-from backend.models.question import (
+from models.question import (
     GenerateQuestionsRequest,
     GenerateQuestionsResponse,
     QuestionResponse
 )
-from backend.services.sensa.question_generator import AnalogyQuestionGenerator
-from backend.services.sensa.user_profile_service import UserProfileService
+from services.sensa.question_generator import AnalogyQuestionGenerator
+from services.sensa.user_profile_service import UserProfileService
 
 router = APIRouter(prefix="/api/sensa/questions", tags=["Sensa Questions"])
 
@@ -39,7 +39,7 @@ async def generate_questions(request: GenerateQuestionsRequest):
     
     # TODO: Get concept from database
     # For now, create a mock concept
-    from backend.models.concept import Concept
+    from models.concept import Concept
     from datetime import datetime
     
     concept = Concept(

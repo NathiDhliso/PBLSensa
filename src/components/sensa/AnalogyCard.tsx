@@ -2,12 +2,14 @@
  * AnalogyCard Component
  * 
  * Displays a personalized analogy with rating functionality
+ * Enhanced with audio coordination for music ducking
  */
 
 import { useState } from 'react';
 import { Sparkles, Star, ThumbsUp } from 'lucide-react';
 import { Analogy } from '@/types/analogy';
 import { AudioNarration } from '@/components/audio/AudioNarration';
+import { useAudioCoordination } from '@/contexts/AudioCoordinationContext';
 
 interface AnalogyCardProps {
   analogy: Analogy;
@@ -19,6 +21,7 @@ export function AnalogyCard({ analogy, onRate, isRating }: AnalogyCardProps) {
   const [selectedRating, setSelectedRating] = useState<number>(0);
   const [hoverRating, setHoverRating] = useState<number>(0);
   const [hasRated, setHasRated] = useState(false);
+  const { startNarration, stopNarration } = useAudioCoordination();
   
   const handleRating = async (rating: number) => {
     if (!onRate || hasRated) return;
@@ -67,6 +70,8 @@ export function AnalogyCard({ analogy, onRate, isRating }: AnalogyCardProps) {
         <AudioNarration
           text={analogy.analogy_text}
           contentId={`analogy-${analogy.id}`}
+          onNarrationStart={() => startNarration(`analogy-${analogy.id}`)}
+          onNarrationStop={() => stopNarration(`analogy-${analogy.id}`)}
         />
       </div>
       

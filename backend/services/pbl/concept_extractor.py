@@ -8,9 +8,9 @@ import json
 import logging
 from typing import List, Dict, Optional
 from uuid import uuid4
-from backend.models.pbl_concept import Concept, ConceptExtractionData, TextChunk
-from backend.services.bedrock_client import BedrockAnalogyGenerator
-from backend.services.pbl.pdf_parser import get_pdf_parser
+from models.pbl_concept import Concept, ConceptExtractionData, TextChunk
+from services.bedrock_client import BedrockAnalogyGenerator
+from services.pbl.pdf_parser import get_pdf_parser
 
 logger = logging.getLogger(__name__)
 

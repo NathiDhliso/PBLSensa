@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Check, X, Edit2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { AudioNarration } from '../audio/AudioNarration';
+import { useAudioCoordination } from '@/contexts/AudioCoordinationContext';
 import type { Concept } from '@/types/pbl';
 
 interface ConceptCardProps {
@@ -9,6 +11,7 @@ interface ConceptCardProps {
   onReject: (id: string) => void;
   onEdit: (id: string, term: string, definition: string) => void;
   isSelected?: boolean;
+  enableAudio?: boolean;
 }
 
 export const ConceptCard: React.FC<ConceptCardProps> = ({
@@ -17,11 +20,13 @@ export const ConceptCard: React.FC<ConceptCardProps> = ({
   onReject,
   onEdit,
   isSelected = false,
+  enableAudio = true,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedTerm, setEditedTerm] = useState(concept.term);
   const [editedDefinition, setEditedDefinition] = useState(concept.definition);
+  const { startNarration, stopNarration } = useAudioCoordination();
 
   const handleSaveEdit = () => {
     onEdit(concept.id, editedTerm, editedDefinition);
@@ -89,9 +94,21 @@ export const ConceptCard: React.FC<ConceptCardProps> = ({
                 )}
               </div>
               <p className="text-gray-700 mb-2">{concept.definition}</p>
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-gray-500 mb-3">
                 Page {concept.page_number} • Importance: {(concept.importance_score * 100).toFixed(0)}%
               </div>
+              
+              {/* Audio Narration */}
+              {enableAudio && !isEditing && (
+                <div className="mt-3">
+                  <AudioNarration
+                    text={`${concept.term}. ${concept.definition}`}
+                    contentId={`concept-${concept.id}`}
+                    onNarrationStart={() => startNarration(`concept-${concept.id}`)}
+                    onNarrationStop={() => stopNarration(`concept-${concept.id}`)}
+                  />
+                </div>
+              )}
             </>
           )}
         </div>

@@ -4,11 +4,12 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { pblService } from '@/services/pblService';
+import { QUERY_KEYS } from '@/config/cacheConfig';
 import type { NodeUpdate, EdgeCreate, LayoutType } from '@/types/pbl';
 
 export function usePBLVisualization(documentId: string, userId?: string) {
   return useQuery({
-    queryKey: ['pbl-visualization', documentId, userId],
+    queryKey: [QUERY_KEYS.PBL_VISUALIZATION, documentId, userId],
     queryFn: () => pblService.getVisualization(documentId, userId),
     enabled: !!documentId,
   });
@@ -29,9 +30,9 @@ export function useUpdateVisualization() {
       edges: any[];
       viewport?: any;
     }) => pblService.updateVisualization(visualizationId, nodes, edges, viewport),
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['pbl-visualization'],
+        queryKey: [QUERY_KEYS.PBL_VISUALIZATION],
       });
     },
   });
@@ -51,7 +52,7 @@ export function useUpdateNode() {
       updates: NodeUpdate;
     }) => pblService.updateNode(visualizationId, nodeId, updates),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pbl-visualization'] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PBL_VISUALIZATION] });
     },
   });
 }
@@ -68,7 +69,7 @@ export function useCreateEdge() {
       edge: EdgeCreate;
     }) => pblService.createEdge(visualizationId, edge),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pbl-visualization'] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PBL_VISUALIZATION] });
     },
   });
 }
@@ -85,7 +86,7 @@ export function useDeleteEdge() {
       edgeId: string;
     }) => pblService.deleteEdge(visualizationId, edgeId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pbl-visualization'] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PBL_VISUALIZATION] });
     },
   });
 }
@@ -102,7 +103,7 @@ export function useChangeLayout() {
       layoutType: LayoutType;
     }) => pblService.changeLayout(visualizationId, layoutType),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pbl-visualization'] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PBL_VISUALIZATION] });
     },
   });
 }
