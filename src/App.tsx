@@ -4,9 +4,11 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { ThemeToggle } from './components/ThemeToggle';
 import { AuthProvider } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
+import { MusicPlayerProvider } from './contexts/MusicPlayerContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ProtectedRoute } from './components/routing/ProtectedRoute';
 import { PublicRoute } from './components/routing/PublicRoute';
+import { FocusMusicPlayer } from './components/music/FocusMusicPlayer';
 import { queryClient } from './config/queryClient';
 
 // Auth pages
@@ -25,13 +27,18 @@ import { CoursesListPage, CourseDetailPage } from './pages/courses';
 import { ProcessingStatusPage } from './pages/processing';
 import { ConceptMapPage } from './pages/conceptMap';
 import { UIShowcasePage } from './pages/UIShowcasePage';
+import ProgressDashboardPage from './pages/progress/ProgressDashboardPage';
 
 function AnimatedRoutes() {
   const location = useLocation();
+  
+  // Show music player only in Sensa Learn portal
+  const showMusicPlayer = location.pathname.startsWith('/sensa');
 
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
+    <>
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
         {/* Public routes - redirect to dashboard if authenticated */}
         <Route
           path="/login"
@@ -120,6 +127,16 @@ function AnimatedRoutes() {
           }
         />
         
+        {/* Progress Dashboard Route */}
+        <Route
+          path="/progress"
+          element={
+            <ProtectedRoute>
+              <ProgressDashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        
         {/* Profile Routes */}
         <Route
           path="/profile"
@@ -195,6 +212,10 @@ function AnimatedRoutes() {
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </AnimatePresence>
+    
+    {/* Focus Music Player - Only in Sensa Learn portal */}
+    {showMusicPlayer && <FocusMusicPlayer />}
+    </>
   );
 }
 
@@ -204,18 +225,20 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <ToastProvider>
-            <div className="min-h-screen bg-gradient-to-br from-purple-50 via-orange-50 to-pink-50
-                            dark:from-dark-bg-primary dark:via-dark-bg-secondary dark:to-[#241539]">
-              
-              {/* Theme Toggle */}
-              <div className="fixed top-4 right-4 z-50">
-                <ThemeToggle />
+            <MusicPlayerProvider>
+              <div className="min-h-screen bg-gradient-to-br from-purple-50 via-orange-50 to-pink-50
+                              dark:from-dark-bg-primary dark:via-dark-bg-secondary dark:to-[#241539]">
+                
+                {/* Theme Toggle */}
+                <div className="fixed top-4 right-4 z-50">
+                  <ThemeToggle />
+                </div>
+                
+                <BrowserRouter>
+                  <AnimatedRoutes />
+                </BrowserRouter>
               </div>
-              
-              <BrowserRouter>
-                <AnimatedRoutes />
-              </BrowserRouter>
-            </div>
+            </MusicPlayerProvider>
           </ToastProvider>
         </AuthProvider>
       </QueryClientProvider>

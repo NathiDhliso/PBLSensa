@@ -114,6 +114,7 @@ export function checkPasswordStrength(password: string): {
 
 /**
  * Cognito error message mapping
+ * @deprecated Use transformAuthError from @/utils/authErrors instead
  */
 export const authErrorMessages: Record<string, string> = {
   'UserNotFoundException': 'No account found with this email',
@@ -129,8 +130,65 @@ export const authErrorMessages: Record<string, string> = {
 
 /**
  * Get user-friendly error message from Cognito error
+ * @deprecated Use useAuthErrorHandler hook instead for better error handling
  */
 export function getAuthErrorMessage(error: any): string {
   const errorCode = error.code || error.name;
   return authErrorMessages[errorCode] || error.message || 'An error occurred. Please try again.';
 }
+
+/**
+ * Enhanced password requirements for display
+ */
+export const PASSWORD_REQUIREMENTS = [
+  'At least 8 characters long',
+  'Contains uppercase letter (A-Z)',
+  'Contains lowercase letter (a-z)',
+  'Contains number (0-9)',
+  'Contains special character (!@#$%^&*)',
+];
+
+/**
+ * Validate password against requirements
+ * Returns which requirements are met
+ */
+export function validatePasswordRequirements(password: string): {
+  requirement: string;
+  met: boolean;
+}[] {
+  return [
+    {
+      requirement: PASSWORD_REQUIREMENTS[0],
+      met: password.length >= 8
+    },
+    {
+      requirement: PASSWORD_REQUIREMENTS[1],
+      met: /[A-Z]/.test(password)
+    },
+    {
+      requirement: PASSWORD_REQUIREMENTS[2],
+      met: /[a-z]/.test(password)
+    },
+    {
+      requirement: PASSWORD_REQUIREMENTS[3],
+      met: /[0-9]/.test(password)
+    },
+    {
+      requirement: PASSWORD_REQUIREMENTS[4],
+      met: /[^A-Za-z0-9]/.test(password)
+    }
+  ];
+}
+
+/**
+ * Confirm email form validation schema
+ */
+export const confirmEmailSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  code: z.string()
+    .min(6, 'Confirmation code must be 6 digits')
+    .max(6, 'Confirmation code must be 6 digits')
+    .regex(/^\d+$/, 'Confirmation code must contain only numbers'),
+});
+
+export type ConfirmEmailFormData = z.infer<typeof confirmEmailSchema>;

@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import { Sparkles, Star, ThumbsUp } from 'lucide-react';
 import { Analogy } from '@/types/analogy';
+import { AudioNarration } from '@/components/audio/AudioNarration';
 
 interface AnalogyCardProps {
   analogy: Analogy;
@@ -60,6 +61,14 @@ export function AnalogyCard({ analogy, onRate, isRating }: AnalogyCardProps) {
       <p className="text-text-dark dark:text-dark-text-primary leading-relaxed mb-4">
         {analogy.analogy_text}
       </p>
+      
+      {/* Audio Narration */}
+      <div className="mb-4">
+        <AudioNarration
+          text={analogy.analogy_text}
+          contentId={`analogy-${analogy.id}`}
+        />
+      </div>
       
       {/* Interest Badge */}
       <div className="flex items-center gap-2 mb-4">

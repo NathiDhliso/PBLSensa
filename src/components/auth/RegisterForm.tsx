@@ -1,17 +1,27 @@
 /**
  * RegisterForm Component
  * 
- * User registration form with password strength indicator
+ * Enhanced registration form with:
+ * - Real-time email validation
+ * - Password strength indicator
+ * - Duplicate email detection
+ * - Auto-login after successful registration
+ * - Enhanced error handling
  */
 
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/contexts/ToastContext';
-import { Input, Button } from '@/components/ui';
-import { registerSchema, RegisterFormData, getAuthErrorMessage, checkPasswordStrength } from '@/utils/validation';
-import { Check, X } from 'lucide-react';
+import { Input, LoadingButton, PasswordInput, FormError } from '@/components/ui';
+import { PasswordRequirements } from '@/components/auth/PasswordRequirements';
+import { registerSchema, RegisterFormData } from '@/utils/validation';
+import { useAuthErrorHandler } from '@/hooks/useAuthErrorHandler';
+import { usePasswordStrength } from '@/hooks/usePasswordStrength';
+import { useSecurityMonitor } from '@/hooks/useSecurityMonitor';
+import type { AuthError } from '@/utils/authErrors';
+import { CheckCircle } from 'lucide-react';
 
 interface RegisterFormProps {
   onSuccess?: () => void;
@@ -19,8 +29,13 @@ interface RegisterFormProps {
 
 export function RegisterForm({ onSuccess }: RegisterFormProps) {
   const navigate = useNavigate();
-  const { signUp } = useAuth();
-  const { showToast } = useToast();
+  const { signUp, signIn } = useAuth();
+  const { handleError } = useAuthErrorHandler();
+  const { checkRateLimit, recordAttempt } = useSecurityMonitor();
+  
+  const [authError, setAuthError] = useState<AuthError | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const {
     register,
@@ -32,119 +47,206 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
     mode: 'onBlur',
   });
 
-  const watchedPassword = watch('password', '');
-  const passwordStrength = checkPasswordStrength(watchedPassword);
-
-  const passwordRequirements = [
-    { label: 'At least 8 characters', test: (p: string) => p.length >= 8 },
-    { label: 'One uppercase letter', test: (p: string) => /[A-Z]/.test(p) },
-    { label: 'One lowercase letter', test: (p: string) => /[a-z]/.test(p) },
-    { label: 'One number', test: (p: string) => /[0-9]/.test(p) },
-    { label: 'One special character', test: (p: string) => /[^A-Za-z0-9]/.test(p) },
-  ];
+  const password = watch('password', '');
+  const email = watch('email', '');
+  const passwordStrength = usePasswordStrength(password);
 
   const onSubmit = async (data: RegisterFormData) => {
     try {
+      // Clear any previous errors
+      setAuthError(null);
+      
+      // Check rate limiting for registration
+      const isRateLimited = checkRateLimit(data.email, 'registration');
+      if (isRateLimited) {
+        setAuthError({
+          code: 'RATE_LIMIT_EXCEEDED',
+          message: 'Too many registration attempts',
+          userMessage: 'Too many registration attempts. Please try again later.',
+          retryable: false,
+        });
+        return;
+      }
+      
+      // Validate password strength
+      if (!passwordStrength.isValid) {
+        setAuthError({
+          code: 'WEAK_PASSWORD',
+          message: 'Password does not meet requirements',
+          userMessage: 'Please ensure your password meets all the requirements listed below.',
+          retryable: true,
+        });
+        return;
+      }
+      
+      // Show loading state
+      setShowSuccess(false);
+      
+      // Sign up user
       await signUp(data.email, data.password, data.name ? { name: data.name } : undefined);
       
-      showToast('success', 'Account created successfully!');
-
-      // Redirect to profile setup
-      navigate('/profile/setup', { replace: true });
+      // Record successful attempt
+      recordAttempt(data.email, 'registration', true);
       
-      onSuccess?.();
+      // Show success state
+      setShowSuccess(true);
+      
+      // Auto-login after brief delay
+      setTimeout(async () => {
+        try {
+          // Automatically sign in the user
+          await signIn(data.email, data.password);
+          
+          setIsSuccess(true);
+          onSuccess?.();
+          
+          // Redirect to dashboard
+          setTimeout(() => {
+            navigate('/dashboard', { 
+              replace: true,
+              state: { message: 'Welcome to Sensa Learn! Your account has been created successfully.' }
+            });
+          }, 1000);
+        } catch (error) {
+          // If auto-login fails, redirect to login page
+          navigate('/login', {
+            state: { message: 'Account created! Please sign in to continue.' }
+          });
+        }
+      }, 800);
+      
     } catch (error: any) {
-      showToast('error', getAuthErrorMessage(error));
+      // Record failed attempt
+      recordAttempt(email || '', 'registration', false);
+      
+      // Handle specific error cases
+      const transformedError = handleError(error);
+      
+      // Check for duplicate email
+      if (error.code === 'UsernameExistsException') {
+        transformedError.actionable = {
+          text: 'Sign in instead',
+          action: '/login',
+        };
+        transformedError.userMessage = 'An account with this email already exists. Please sign in or use a different email.';
+      }
+      
+      setAuthError(transformedError);
     }
   };
 
+  // Success screen
+  if (isSuccess) {
+    return (
+      <div className="text-center space-y-6">
+        <div className="flex justify-center">
+          <div className="relative">
+            <div className="absolute inset-0 bg-green-500/20 dark:bg-green-400/20 rounded-full blur-xl animate-pulse" />
+            <CheckCircle size={64} className="relative text-green-600 dark:text-green-400" />
+          </div>
+        </div>
+        
+        <div className="space-y-3">
+          <h3 className="text-2xl font-semibold text-text-dark dark:text-dark-text-primary">
+            Welcome to Sensa Learn!
+          </h3>
+          <p className="text-text-medium dark:text-dark-text-secondary">
+            Your account has been created successfully. Redirecting to your dashboard...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+      {/* Display form-level errors */}
+      {authError && (
+        <FormError
+          error={authError.userMessage}
+          actionable={
+            authError.actionable
+              ? {
+                  text: authError.actionable.text,
+                  action: () => {
+                    if (authError.actionable?.action.startsWith('/')) {
+                      navigate(authError.actionable.action);
+                    }
+                  },
+                }
+              : undefined
+          }
+        />
+      )}
+
       <Input
         {...register('name')}
-        label="Name"
+        label="Full Name"
         type="text"
         placeholder="John Doe"
         error={errors.name?.message}
-        helperText="Optional"
         autoComplete="name"
+        disabled={isSubmitting}
+        aria-describedby="name-helper"
       />
 
       <Input
         {...register('email')}
-        label="Email"
+        label="Email Address"
         type="email"
         placeholder="you@example.com"
         error={errors.email?.message}
         required
         autoComplete="email"
+        disabled={isSubmitting}
+        aria-describedby={errors.email ? 'email-error' : undefined}
       />
 
-      <div>
-        <Input
+      <div className="space-y-3">
+        <PasswordInput
           {...register('password')}
           label="Password"
-          type="password"
           placeholder="••••••••"
           error={errors.password?.message}
           required
           autoComplete="new-password"
+          showToggle
+          showStrength
+          disabled={isSubmitting}
         />
-        
-        {watchedPassword && (
-          <div className="mt-2 space-y-2">
-            <div className="flex items-center gap-2">
-              <div className="flex-1 h-2 bg-gray-200 dark:bg-dark-bg-secondary rounded-full overflow-hidden">
-                <div
-                  className={`h-full transition-all duration-300 ${passwordStrength.color}`}
-                  style={{ width: `${(passwordStrength.score / 5) * 100}%` }}
-                />
-              </div>
-              <span className="text-xs text-text-medium dark:text-dark-text-secondary">
-                {passwordStrength.feedback}
-              </span>
-            </div>
-            
-            <div className="space-y-1">
-              {passwordRequirements.map((req) => {
-                const met = req.test(watchedPassword);
-                return (
-                  <div key={req.label} className="flex items-center gap-2 text-xs">
-                    {met ? (
-                      <Check size={14} className="text-green-600 dark:text-green-400" />
-                    ) : (
-                      <X size={14} className="text-gray-400 dark:text-dark-text-muted" />
-                    )}
-                    <span className={met ? 'text-green-600 dark:text-green-400' : 'text-text-light dark:text-dark-text-tertiary'}>
-                      {req.label}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+
+        {password && (
+          <PasswordRequirements 
+            password={password} 
+            requirements={passwordStrength.requirements}
+          />
         )}
       </div>
 
-      <Input
+      <PasswordInput
         {...register('confirmPassword')}
         label="Confirm Password"
-        type="password"
         placeholder="••••••••"
         error={errors.confirmPassword?.message}
         required
         autoComplete="new-password"
+        showToggle
+        disabled={isSubmitting}
       />
 
-      <Button
+      <LoadingButton
         type="submit"
         variant="primary"
         size="lg"
         isLoading={isSubmitting}
+        loadingText="Creating account..."
+        successState={showSuccess}
+        successText="Account created!"
         className="w-full"
+        disabled={isSubmitting}
       >
         Create Account
-      </Button>
+      </LoadingButton>
     </form>
   );
 }

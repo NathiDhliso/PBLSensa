@@ -14,7 +14,11 @@ import { updateMockProfile } from '@/services/mockData';
  */
 async function updateProfile(data: UpdateProfileRequest): Promise<UpdateProfileResponse> {
   try {
-    const response = await apiClient.put<UpdateProfileResponse>('/profile', data);
+    // TODO: Get actual user_id from auth context
+    const userId = 'user-123'; // Temporary hardcoded user ID
+    const response = await apiClient.put<UpdateProfileResponse>('/profile', data, {
+      params: { user_id: userId }
+    });
     return response.data;
   } catch (error) {
     console.log('[useUpdateProfile] API failed, using mock data');

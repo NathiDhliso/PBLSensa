@@ -2,11 +2,12 @@
  * Authentication Context
  * 
  * Provides global authentication state and methods throughout the application.
- * Handles automatic token refresh and session restoration.
+ * Handles automatic token refresh, session restoration, and session management.
  */
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { authService, CognitoUser, UserAttributes } from '@/services/authWrapper';
+import { sessionManager } from '@/services/sessionManager';
 
 /**
  * Authentication context value
@@ -25,7 +26,7 @@ interface AuthContextValue {
   /** Confirm sign up with code */
   confirmSignUp: (email: string, code: string) => Promise<void>;
   /** Sign in a user */
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   /** Sign out current user */
   signOut: () => Promise<void>;
   /** Refresh current session */
@@ -36,6 +37,8 @@ interface AuthContextValue {
   confirmPassword: (email: string, code: string, newPassword: string) => Promise<void>;
   /** Clear current error */
   clearError: () => void;
+  /** Track user activity */
+  trackActivity: () => void;
 }
 
 /**
@@ -64,6 +67,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<CognitoUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [, setRememberMe] = useState(false);
+
+  /**
+   * Handle auto-logout due to inactivity
+   */
+  const handleAutoLogout = useCallback(async () => {
+    try {
+      // End session
+      sessionManager.endSession();
+      
+      // Clear user state
+      setUser(null);
+      
+      // Log the auto-logout
+      console.log('[Auth] User logged out due to inactivity');
+      
+      // The app should handle redirect to login page
+      // This can be done by checking isAuthenticated in a route guard
+    } catch (error) {
+      console.error('Error during auto-logout:', error);
+    }
+  }, []);
 
   /**
    * Restore session on mount
@@ -72,8 +97,30 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const restoreSession = async () => {
       try {
         setIsLoading(true);
+        
+        // Check for remember me token first
+        const rememberToken = sessionManager.getRememberMeToken();
+        if (rememberToken) {
+          // Try to restore session with remember me
+          const currentUser = await authService.getCurrentUser();
+          if (currentUser) {
+            setUser(currentUser);
+            setRememberMe(true);
+            // Start session management
+            sessionManager.startSession(currentUser.username, true, handleAutoLogout);
+            return;
+          }
+        }
+        
+        // Try to restore active session
         const currentUser = await authService.getCurrentUser();
-        setUser(currentUser);
+        if (currentUser) {
+          setUser(currentUser);
+          // Start session management without remember me
+          sessionManager.startSession(currentUser.username, false, handleAutoLogout);
+        } else {
+          setUser(null);
+        }
       } catch (err) {
         // No active session
         setUser(null);
@@ -83,10 +130,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
 
     restoreSession();
-  }, []);
+  }, [handleAutoLogout]);
 
   /**
-   * Set up automatic token refresh
+   * Set up automatic token refresh and activity tracking
    */
   useEffect(() => {
     if (!user) return;
@@ -96,8 +143,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (authService.needsRefresh()) {
         try {
           await authService.refreshSession();
+          // Track activity on successful refresh
+          sessionManager.trackActivity();
         } catch (err) {
           // Token refresh failed - sign out user
+          sessionManager.endSession();
           setUser(null);
           setError(new Error('Session expired. Please sign in again.'));
         }
@@ -148,12 +198,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
   /**
    * Sign in a user
    */
-  const signIn = useCallback(async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string, rememberMeOption: boolean = false) => {
     try {
       setIsLoading(true);
       setError(null);
       const authenticatedUser = await authService.signIn(email, password);
       setUser(authenticatedUser);
+      setRememberMe(rememberMeOption);
+      
+      // Start session management
+      sessionManager.startSession(authenticatedUser.username, rememberMeOption, handleAutoLogout);
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to sign in');
       setError(error);
@@ -161,7 +215,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [handleAutoLogout]);
 
   /**
    * Sign out current user
@@ -170,8 +224,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       setIsLoading(true);
       setError(null);
+      
+      // End session management
+      sessionManager.endSession();
+      sessionManager.clearRememberMe();
+      
+      // Sign out from auth service
       await authService.signOut();
       setUser(null);
+      setRememberMe(false);
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to sign out');
       setError(error);
@@ -188,9 +249,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       setError(null);
       await authService.refreshSession();
+      // Track activity on successful refresh
+      sessionManager.trackActivity();
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to refresh session');
       setError(error);
+      sessionManager.endSession();
       setUser(null);
       throw error;
     }
@@ -241,6 +305,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setError(null);
   }, []);
 
+  /**
+   * Track user activity
+   */
+  const trackActivity = useCallback(() => {
+    if (user) {
+      sessionManager.trackActivity();
+    }
+  }, [user]);
+
+  /**
+   * Cleanup on unmount
+   */
+  useEffect(() => {
+    return () => {
+      // Don't destroy session manager on unmount, only on explicit logout
+    };
+  }, []);
+
   const value: AuthContextValue = {
     user,
     isAuthenticated: user !== null,
@@ -254,6 +336,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     forgotPassword,
     confirmPassword,
     clearError,
+    trackActivity,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

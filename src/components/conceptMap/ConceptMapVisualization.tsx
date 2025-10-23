@@ -3,12 +3,14 @@ import * as d3 from 'd3';
 import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { ConceptMap, Concept, Relationship } from '../../types/conceptMap';
 import { Button } from '../ui/Button';
+import { getNodeStyle, getRelevanceFromScore, type ExamRelevance } from '../pbl/ExamRelevanceIndicator';
 
 interface ConceptMapVisualizationProps {
   conceptMap: ConceptMap;
   onNodeClick?: (concept: Concept) => void;
   onNodeHover?: (concept: Concept | null) => void;
   highlightedNodes?: Set<string>;
+  showExamRelevanceFilter?: boolean;
 }
 
 interface D3Node extends d3.SimulationNodeDatum {
@@ -29,14 +31,16 @@ export const ConceptMapVisualization: React.FC<ConceptMapVisualizationProps> = (
   onNodeClick,
   onNodeHover,
   highlightedNodes,
+  showExamRelevanceFilter = true,
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown>>();
+  const [filterHighRelevance, setFilterHighRelevance] = useState(false);
 
   // Extract nodes and links from concept map
-  const nodes: D3Node[] = conceptMap.chapters.flatMap((chapter: any) =>
+  const allNodes: D3Node[] = conceptMap.chapters.flatMap((chapter: any) =>
     chapter.keywords.map((keyword: any) => ({
       id: `${chapter.chapter_number}-${keyword.term}`,
       concept: {
@@ -49,6 +53,23 @@ export const ConceptMapVisualization: React.FC<ConceptMapVisualizationProps> = (
       } as Concept,
     }))
   );
+
+  // Helper function to get relevance from concept data
+  const getConceptRelevance = (examRelevant: any): ExamRelevance => {
+    if (!examRelevant) return 'low';
+    if (typeof examRelevant === 'string') return examRelevant as ExamRelevance;
+    if (typeof examRelevant === 'boolean') return examRelevant ? 'high' : 'low';
+    if (typeof examRelevant === 'number') return getRelevanceFromScore(examRelevant);
+    return 'low';
+  };
+
+  // Filter nodes based on exam relevance if filter is active
+  const nodes: D3Node[] = filterHighRelevance
+    ? allNodes.filter(node => {
+        const relevance = getConceptRelevance(node.concept.exam_relevant);
+        return relevance === 'high';
+      })
+    : allNodes;
 
   const links: D3Link[] = conceptMap.chapters.flatMap((chapter: any) =>
     chapter.relationships.map((rel: any) => ({
@@ -140,17 +161,42 @@ export const ConceptMapVisualization: React.FC<ConceptMapVisualizationProps> = (
         .on('drag', dragged)
         .on('end', dragended) as any);
 
-    // Add circles to nodes
+    // Add circles to nodes with exam relevance styling
     node.append('circle')
-      .attr('r', 20)
+      .attr('r', d => {
+        const relevance = getConceptRelevance(d.concept.exam_relevant);
+        const style = getNodeStyle(relevance);
+        return 20 * style.scale;
+      })
       .attr('fill', d => {
         if (highlightedNodes?.has(d.id)) {
           return '#9333ea'; // purple-600
         }
         return '#a855f7'; // purple-500
       })
-      .attr('stroke', '#fff')
-      .attr('stroke-width', 2);
+      .attr('stroke', d => {
+        const relevance = getConceptRelevance(d.concept.exam_relevant);
+        
+        if (relevance === 'high') {
+          return '#f97316'; // orange-500
+        } else if (relevance === 'medium') {
+          return '#eab308'; // yellow-500
+        }
+        return '#fff';
+      })
+      .attr('stroke-width', d => {
+        const relevance = getConceptRelevance(d.concept.exam_relevant);
+        return relevance === 'high' ? 3 : 2;
+      })
+      .style('filter', d => {
+        const relevance = getConceptRelevance(d.concept.exam_relevant);
+        const style = getNodeStyle(relevance);
+        
+        if (style.shouldGlow) {
+          return 'drop-shadow(0 0 8px rgba(249, 115, 22, 0.6))';
+        }
+        return 'none';
+      });
 
     // Add labels to nodes
     node.append('text')
@@ -171,19 +217,37 @@ export const ConceptMapVisualization: React.FC<ConceptMapVisualizationProps> = (
       })
       .on('mouseenter', (event, d) => {
         onNodeHover?.(d.concept);
-        d3.select(event.currentTarget)
-          .select('circle')
+        const circle = d3.select(event.currentTarget).select('circle');
+        const relevance = getConceptRelevance(d.concept.exam_relevant);
+        const style = getNodeStyle(relevance);
+        const baseRadius = 20 * style.scale;
+        
+        circle
           .transition()
           .duration(200)
-          .attr('r', 25);
+          .attr('r', baseRadius * 1.25);
+        
+        // Intensify glow on hover for high relevance
+        if (style.shouldGlow) {
+          circle.style('filter', 'drop-shadow(0 0 12px rgba(249, 115, 22, 0.9))');
+        }
       })
-      .on('mouseleave', (event) => {
+      .on('mouseleave', (event, d) => {
         onNodeHover?.(null);
-        d3.select(event.currentTarget)
-          .select('circle')
+        const circle = d3.select(event.currentTarget).select('circle');
+        const relevance = getConceptRelevance(d.concept.exam_relevant);
+        const style = getNodeStyle(relevance);
+        const baseRadius = 20 * style.scale;
+        
+        circle
           .transition()
           .duration(200)
-          .attr('r', 20);
+          .attr('r', baseRadius);
+        
+        // Reset glow
+        if (style.shouldGlow) {
+          circle.style('filter', 'drop-shadow(0 0 8px rgba(249, 115, 22, 0.6))');
+        }
       });
 
     // Update positions on simulation tick
@@ -218,7 +282,7 @@ export const ConceptMapVisualization: React.FC<ConceptMapVisualizationProps> = (
     return () => {
       simulation.stop();
     };
-  }, [conceptMap, dimensions, highlightedNodes, onNodeClick, onNodeHover, nodes, links]);
+  }, [conceptMap, dimensions, highlightedNodes, onNodeClick, onNodeHover, nodes, links, filterHighRelevance]);
 
   const handleZoomIn = () => {
     if (svgRef.current && zoomRef.current) {
@@ -287,9 +351,50 @@ export const ConceptMapVisualization: React.FC<ConceptMapVisualizationProps> = (
         </Button>
       </div>
 
+      {/* Exam Relevance Filter */}
+      {showExamRelevanceFilter && (
+        <div className="absolute top-4 left-4 bg-white dark:bg-gray-800 px-4 py-3 rounded-lg shadow-lg">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={filterHighRelevance}
+              onChange={(e) => setFilterHighRelevance(e.target.checked)}
+              className="w-4 h-4 text-orange-500 rounded focus:ring-orange-500"
+            />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Show High Relevance Only
+            </span>
+          </label>
+        </div>
+      )}
+
+      {/* Legend */}
+      {showExamRelevanceFilter && (
+        <div className="absolute bottom-4 right-4 bg-white dark:bg-gray-800 px-4 py-3 rounded-lg shadow-lg">
+          <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            Exam Relevance
+          </h4>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-orange-500 exam-relevant-glow" />
+              <span className="text-xs text-gray-600 dark:text-gray-400">High (Glowing)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-purple-500 border-2 border-yellow-500" />
+              <span className="text-xs text-gray-600 dark:text-gray-400">Medium</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-purple-500 border-2 border-white dark:border-gray-700" />
+              <span className="text-xs text-gray-600 dark:text-gray-400">Low</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Node count */}
       <div className="absolute bottom-4 left-4 bg-white dark:bg-gray-800 px-3 py-2 rounded-lg shadow-lg text-sm text-gray-600 dark:text-gray-400">
         {nodes.length} concepts
+        {filterHighRelevance && ` (${allNodes.length} total)`}
       </div>
     </div>
   );

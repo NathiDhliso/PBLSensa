@@ -22,3 +22,13 @@ export type { FormFieldProps } from './FormField';
 export { Portal } from './Portal';
 
 export { Modal } from './Modal';
+
+// Enhanced auth components
+export { PasswordInput } from './PasswordInput';
+export type { PasswordInputProps } from './PasswordInput';
+
+export { LoadingButton } from './LoadingButton';
+export type { LoadingButtonProps } from './LoadingButton';
+
+export { FormError } from './FormError';
+export type { FormErrorProps } from './FormError';

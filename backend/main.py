@@ -3,7 +3,7 @@ PBL Backend API - Local Development Server
 FastAPI application for Perspective-Based Learning platform
 """
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Query
+from fastapi import FastAPI, HTTPException, UploadFile, File, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict
@@ -79,26 +79,32 @@ class ConceptMap(BaseModel):
 
 # Profile Models
 class UserProfile(BaseModel):
-    user_id: str
+    user_id: str = Field(..., alias='userId')
     email: str
     name: str
-    age_range: Optional[str] = None
+    age_range: Optional[str] = Field(None, alias='ageRange')
     location: Optional[str] = None
     interests: List[str] = []
-    learning_style: Optional[str] = None
+    learning_style: Optional[str] = Field(None, alias='learningStyle')
     background: Optional[str] = None
-    education_level: Optional[str] = None
-    created_at: str
-    updated_at: str
+    education_level: Optional[str] = Field(None, alias='educationLevel')
+    created_at: str = Field(..., alias='createdAt')
+    updated_at: str = Field(..., alias='updatedAt')
+    
+    class Config:
+        populate_by_name = True  # Allow both snake_case and camelCase
 
 class UpdateProfileRequest(BaseModel):
     name: Optional[str] = None
-    age_range: Optional[str] = None
+    age_range: Optional[str] = Field(None, alias='ageRange')
     location: Optional[str] = None
     interests: Optional[List[str]] = None
-    learning_style: Optional[str] = None
+    learning_style: Optional[str] = Field(None, alias='learningStyle')
     background: Optional[str] = None
-    education_level: Optional[str] = None
+    education_level: Optional[str] = Field(None, alias='educationLevel')
+    
+    class Config:
+        populate_by_name = True  # Allow both snake_case and camelCase
 
 # Analogy Models
 class AnalogyResponse(BaseModel):
@@ -426,10 +432,29 @@ async def update_user_profile(user_id: str, updates: UpdateProfileRequest):
     """Update user profile (path parameter version)"""
     return _update_profile_logic(user_id, updates)
 
+@app.get("/profile", response_model=UserProfile)
+async def get_profile(user_id: str = Query("user-123", description="User ID")):
+    """Get user profile (query parameter version for /profile endpoint)"""
+    if user_id not in users_db:
+        # Create default profile if doesn't exist
+        now = datetime.now().isoformat()
+        default_profile = UserProfile(
+            user_id=user_id,
+            email=f"user{user_id}@example.com",
+            name=f"User {user_id}",
+            interests=[],
+            created_at=now,
+            updated_at=now
+        )
+        users_db[user_id] = default_profile
+        return default_profile
+    
+    return users_db[user_id]
+
 @app.put("/profile", response_model=UserProfile)
 async def update_profile_alt(
-    user_id: str = Query(..., description="User ID"),
-    updates: UpdateProfileRequest = None
+    updates: UpdateProfileRequest,
+    user_id: str = Query("user-123", description="User ID")
 ):
     """Update user profile (query parameter version for /profile endpoint)"""
     return _update_profile_logic(user_id, updates)

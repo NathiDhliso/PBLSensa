@@ -14,7 +14,11 @@ import { getMockProfile } from '@/services/mockData';
  */
 async function fetchProfile(): Promise<UserProfile> {
   try {
-    const response = await apiClient.get<UserProfile>('/profile');
+    // TODO: Get actual user_id from auth context
+    const userId = 'user-123'; // Temporary hardcoded user ID
+    const response = await apiClient.get<UserProfile>('/profile', {
+      params: { user_id: userId }
+    });
     return response.data;
   } catch (error) {
     console.log('[useProfile] API failed, using mock data');
