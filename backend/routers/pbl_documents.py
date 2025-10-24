@@ -183,7 +183,7 @@ async def get_concepts(
     try:
         concepts = await concept_service.get_by_document(
             document_id=UUID(document_id),
-            validated=validated,
+            validated_only=validated if validated is not None else False,
             structure_type=structure_type
         )
         
@@ -495,12 +495,12 @@ async def get_visualization(
             "id": str(visualization.id),
             "document_id": str(visualization.document_id),
             "user_id": str(visualization.user_id) if visualization.user_id else None,
-            "nodes": visualization.nodes_json,
-            "edges": visualization.edges_json,
+            "nodes": [node.dict() for node in visualization.nodes],
+            "edges": [edge.dict() for edge in visualization.edges],
             "layout_type": visualization.layout_type,
-            "viewport": visualization.viewport_json,
+            "viewport": visualization.viewport.dict() if visualization.viewport else {"zoom": 1.0, "x": 0, "y": 0},
             "created_at": visualization.created_at.isoformat(),
-            "updated_at": visualization.updated_at.isoformat()
+            "updated_at": visualization.updated_at.isoformat() if visualization.updated_at else None
         }
         
     except Exception as e:

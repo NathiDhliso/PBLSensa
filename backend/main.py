@@ -39,40 +39,37 @@ async def startup():
     """Initialize database connection on startup"""
     db = get_db_connection()
     connected = await db.connect()
-    if connected:
-        print("✅ Database connected - PBL features enabled")
-        # Load courses from database
-        try:
-            rows = await db.fetch("SELECT * FROM courses")
-            for row in rows:
-                # Convert UUID to string
-                course_id = str(row[0])  # First column is course_id
-                courses_db[course_id] = Course(
-                    id=course_id,
-                    name=row[2],  # name
-                    description=row[3] or "",  # description
-                    created_at=row[5].isoformat() if row[5] else datetime.now().isoformat(),  # created_at
-                    updated_at=row[6].isoformat() if row[6] else datetime.now().isoformat(),  # updated_at
-                    document_count=0
-                )
-            print(f"📦 Loaded {len(courses_db)} courses from database: {list(courses_db.keys())}")
-        except Exception as e:
-            print(f"⚠️  Failed to load courses: {e}")
-            import traceback
-            traceback.print_exc()
-    else:
-        print("⚠️  Database not connected - PBL features limited")
-        # Seed default course for local development
-        print("📦 Seeding default course for local development...")
-        courses_db["course-4"] = Course(
-            id="course-4",
-            name="Default Course",
-            description="Auto-created for local development",
-            created_at=datetime.now().isoformat(),
-            updated_at=datetime.now().isoformat(),
-            document_count=0
-        )
-        print("✅ Default course created: course-4")
+    
+    if not connected:
+        print("[ERROR] Database connection required but not available!")
+        print("[ERROR] Please ensure:")
+        print("  1. Bastion host is running: .\\infra\\scripts\\create-bastion-host.ps1")
+        print("  2. DB tunnel is active: .\\infra\\scripts\\start-db-tunnel.ps1")
+        print("  3. Port 5432 is accessible")
+        raise RuntimeError("Database connection required - cannot start server")
+    
+    print("[OK] Database connected - PBL features enabled")
+    
+    # Load courses from database
+    try:
+        rows = await db.fetch("SELECT * FROM courses")
+        for row in rows:
+            # Convert UUID to string
+            course_id = str(row[0])  # First column is course_id
+            courses_db[course_id] = Course(
+                id=course_id,
+                name=row[2],  # name
+                description=row[3] or "",  # description
+                created_at=row[5].isoformat() if row[5] else datetime.now().isoformat(),  # created_at
+                updated_at=row[6].isoformat() if row[6] else datetime.now().isoformat(),  # updated_at
+                document_count=0
+            )
+        print(f"[INFO] Loaded {len(courses_db)} courses from database: {list(courses_db.keys())}")
+    except Exception as e:
+        print(f"[ERROR] Failed to load courses from database: {e}")
+        import traceback
+        traceback.print_exc()
+        raise RuntimeError(f"Failed to load courses: {e}")
 
 @app.on_event("shutdown")
 async def shutdown():
@@ -383,22 +380,22 @@ async def upload_document(
     
     # Validate file type
     if not file.filename.endswith('.pdf'):
-        print(f"❌ ERROR: Invalid file type - {file.filename}", flush=True)
+        print(f"[ERROR] ERROR: Invalid file type - {file.filename}", flush=True)
         raise HTTPException(status_code=422, detail="Only PDF files are supported")
     
     if course_id not in courses_db:
-        print(f"❌ ERROR: Course not found - {course_id}", flush=True)
+        print(f"[ERROR] ERROR: Course not found - {course_id}", flush=True)
         print(f"   Available courses: {list(courses_db.keys())}", flush=True)
         raise HTTPException(status_code=404, detail="Course not found")
     
-    print(f"✅ Validation passed!", flush=True)
+    print(f"[OK] Validation passed!", flush=True)
     
-    # Create document record
-    doc_id = f"doc-{len(documents_db) + 1}"
+    # Create document record with UUID
+    doc_id = str(uuid.uuid4())
     task_id = str(uuid.uuid4())
     
     print(f"\n{'='*80}", flush=True)
-    print(f"📤 CREATING DOCUMENT RECORD", flush=True)
+    print(f"[INFO] CREATING DOCUMENT RECORD", flush=True)
     print(f"{'='*80}", flush=True)
     print(f"   Filename: {file.filename}", flush=True)
     print(f"   Course ID: {course_id}", flush=True)
@@ -409,32 +406,32 @@ async def upload_document(
     # Save file temporarily
     temp_path = None
     try:
-        print(f"💾 Creating temporary file...", flush=True)
+        print(f"[SAVE] Creating temporary file...", flush=True)
         # Create temp file
         with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_file:
             temp_path = temp_file.name
             print(f"   Temp path: {temp_path}", flush=True)
             
             # Read and save file
-            print(f"📖 Reading file content...", flush=True)
+            print(f"[READ] Reading file content...", flush=True)
             content = await file.read()
             temp_file.write(content)
-            print(f"✅ File saved successfully ({len(content):,} bytes)", flush=True)
+            print(f"[OK] File saved successfully ({len(content):,} bytes)", flush=True)
         
         # Process with PBL pipeline
         print(f"\n{'='*80}", flush=True)
-        print(f"🚀 STARTING PBL PIPELINE PROCESSING", flush=True)
+        print(f"[START] STARTING PBL PIPELINE PROCESSING", flush=True)
         print(f"{'='*80}", flush=True)
         
         try:
-            print(f"🔧 Initializing pipeline...", flush=True)
+            print(f"[INIT] Initializing pipeline...", flush=True)
             sys.stdout.flush()
             pipeline = get_pbl_pipeline()
-            print(f"✅ Pipeline initialized: {type(pipeline).__name__}", flush=True)
+            print(f"[OK] Pipeline initialized: {type(pipeline).__name__}", flush=True)
             print(f"   Available methods: {[m for m in dir(pipeline) if not m.startswith('_')]}", flush=True)
             sys.stdout.flush()
         except Exception as init_error:
-            print(f"❌ PIPELINE INITIALIZATION FAILED!", flush=True)
+            print(f"[ERROR] PIPELINE INITIALIZATION FAILED!", flush=True)
             print(f"   Error: {str(init_error)}", flush=True)
             import traceback
             traceback.print_exc()
@@ -442,17 +439,17 @@ async def upload_document(
             raise
         
         try:
-            print(f"📊 Processing document...", flush=True)
+            print(f"[INFO] Processing document...", flush=True)
             sys.stdout.flush()
             result = await pipeline.process_document(
                 pdf_path=temp_path,
-                document_id=uuid.UUID(doc_id.replace('doc-', '00000000-0000-0000-0000-00000000000'))
+                document_id=doc_id  # Already a UUID string
             )
-            print(f"✅ Pipeline processing complete", flush=True)
+            print(f"[OK] Pipeline processing complete", flush=True)
             print(f"   Success: {result.get('success', False)}", flush=True)
             sys.stdout.flush()
         except Exception as proc_error:
-            print(f"❌ PIPELINE PROCESSING FAILED!", flush=True)
+            print(f"[ERROR] PIPELINE PROCESSING FAILED!", flush=True)
             print(f"   Error: {str(proc_error)}", flush=True)
             import traceback
             traceback.print_exc()
@@ -470,7 +467,7 @@ async def upload_document(
         )
         
         documents_db[doc_id] = document
-        print(f"💾 Document record saved", flush=True)
+        print(f"[SAVE] Document record saved", flush=True)
         
         # Update course document count
         courses_db[course_id].document_count += 1
@@ -486,7 +483,7 @@ async def upload_document(
         relationships_count = len(results.get('relationships', []))
         
         print(f"\n{'='*80}", flush=True)
-        print(f"✅ UPLOAD COMPLETE", flush=True)
+        print(f"[OK] UPLOAD COMPLETE", flush=True)
         print(f"{'='*80}", flush=True)
         print(f"   Status: {document.status}", flush=True)
         print(f"   Document ID: {doc_id}", flush=True)
@@ -496,7 +493,7 @@ async def upload_document(
         if concepts_count > 0:
             print(f"   💡 Data available - PBL router will serve from database", flush=True)
         else:
-            print(f"   ⚠️  No concepts extracted - check pipeline logs above", flush=True)
+            print(f"   [WARN]  No concepts extracted - check pipeline logs above", flush=True)
         print(f"{'='*80}\n", flush=True)
         
         return {
@@ -508,7 +505,7 @@ async def upload_document(
         
     except Exception as e:
         print(f"\n{'='*80}", flush=True)
-        print(f"❌ ERROR DURING PROCESSING", flush=True)
+        print(f"[ERROR] ERROR DURING PROCESSING", flush=True)
         print(f"{'='*80}", flush=True)
         print(f"Error Type: {type(e).__name__}", flush=True)
         print(f"Error Message: {str(e)}", flush=True)
@@ -527,7 +524,7 @@ async def upload_document(
             processed_at=None
         )
         documents_db[doc_id] = document
-        print(f"💾 Failed document record saved", flush=True)
+        print(f"[SAVE] Failed document record saved", flush=True)
         
         raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
         
@@ -535,7 +532,7 @@ async def upload_document(
         # Clean up temp file
         if temp_path and os.path.exists(temp_path):
             os.unlink(temp_path)
-            print(f"🗑️  Cleaned up temp file: {temp_path}", flush=True)
+            print(f"[CLEANUP]  Cleaned up temp file: {temp_path}", flush=True)
 
 @app.delete("/documents/{document_id}")
 async def delete_document(document_id: str):
@@ -1051,6 +1048,6 @@ async def submit_feedback(feedback: dict):
 
 if __name__ == "__main__":
     import uvicorn
-    print("🚀 Starting PBL Backend API on http://localhost:8000")
-    print("📚 API Documentation: http://localhost:8000/docs")
+    print("[START] Starting PBL Backend API on http://localhost:8000")
+    print("[DOCS] API Documentation: http://localhost:8000/docs")
     uvicorn.run(app, host="0.0.0.0", port=8000)

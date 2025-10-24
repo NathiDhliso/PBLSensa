@@ -44,30 +44,19 @@ class RelationshipService:
         logger.info(f"Detecting relationships for concept: {concept.term}")
         
         # Step 1: Generate embedding
-        concept_embedding = await self.embedding_service.generate_embedding(
+        concept_embedding = self.embedding_service.generate_embedding(
             concept.term + " " + concept.definition
         )
         
         # Step 2: Semantic search for related concepts
-        chapter_id = concept.structure_id.split('_')[0] if concept.structure_id else None
+        # Note: Searching across all concepts since structure_id is not stored on Concept model
         related_concepts = await self._semantic_search(
             embedding=concept_embedding,
             document_id=document_id,
-            chapter_id=chapter_id,
+            chapter_id=None,  # Search all chapters
             exclude_concept_id=concept.id,
             top_k=10
         )
-        
-        # Step 3: If sparse results, expand search
-        if len(related_concepts) < 3:
-            logger.info("Sparse results, expanding search to all chapters")
-            related_concepts = await self._semantic_search(
-                embedding=concept_embedding,
-                document_id=document_id,
-                chapter_id=None,  # Search all chapters
-                exclude_concept_id=concept.id,
-                top_k=10
-            )
         
         logger.info(f"Found {len(related_concepts)} related concepts")
         
@@ -169,7 +158,6 @@ class RelationshipService:
 Main Concept:
 Term: {main_concept.term}
 Definition: {main_concept.definition}
-Location: {main_concept.structure_id}
 Type: {main_concept.structure_type}
 
 Related Concepts Found (by semantic similarity):
@@ -179,7 +167,6 @@ Related Concepts Found (by semantic similarity):
             context += f"""
 {i}. {related['term']} (similarity: {related['similarity']:.2f})
    Definition: {related['definition']}
-   Location: {related['structure_id']}
 """
         
         return context

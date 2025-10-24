@@ -235,9 +235,9 @@ class PBLVisualization(PBLVisualizationBase):
     """Complete visualization model"""
     id: UUID
     document_id: UUID
-    user_id: UUID
+    user_id: Optional[UUID] = None
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
     
     class Config:
         orm_mode = True

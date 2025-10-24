@@ -50,6 +50,15 @@ class V7Pipeline:
         self.hierarchy_extractor = get_hierarchy_extractor()
         self.concept_service = get_concept_service()  # Has extract_concepts_v7() method
         self.relationship_service = get_relationship_service()
+        
+        # Inject dependencies into relationship service
+        self.relationship_service.db = self.db
+        try:
+            import boto3
+            self.relationship_service.bedrock_client = boto3.client('bedrock-runtime', region_name='eu-west-1')
+        except Exception as e:
+            logger.warning(f"Failed to initialize Bedrock client: {e}")
+        
         self.deduplicator = get_concept_deduplicator()  # NEW: Cleaner results
         self.cache_service = get_layer0_cache_service()
         self.hash_service = get_pdf_hash_service()
@@ -322,20 +331,9 @@ class V7Pipeline:
             logger.info(f"  Hierarchy nodes: {len(hierarchy)}")
             logger.info(f"  Parse method: {parse_method}, confidence: {parse_confidence}")
             
-            # Bulk insert concepts
-            for concept in concepts:
-                await self.db.execute(
-                    """
-                    INSERT INTO concepts (
-                        document_id, term, definition, confidence,
-                        methods_found, extraction_methods, structure_id, structure_type
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                    ON CONFLICT DO NOTHING
-                    """,
-                    document_id, concept.term, concept.definition, concept.confidence,
-                    concept.methods_found, concept.extraction_methods,
-                    concept.structure_id, concept.structure_type
-                )
+            # Note: Concepts are already stored in database via concept_service.create()
+            # The v7 metadata (confidence, methods_found, etc.) would go in a separate table
+            logger.info(f"Concepts already persisted: {len(concepts)}")
             
             # Bulk insert relationships
             for rel in relationships:
@@ -411,11 +409,8 @@ class V7Pipeline:
             'id': str(concept.id) if hasattr(concept, 'id') else None,
             'term': concept.term,
             'definition': concept.definition,
-            'confidence': concept.confidence,
-            'methods_found': concept.methods_found,
-            'extraction_methods': concept.extraction_methods,
-            'structure_id': concept.structure_id,
-            'structure_type': concept.structure_type
+            'structure_type': concept.structure_type,
+            'importance_score': concept.importance_score
         }
     
     def _relationship_to_dict(self, rel: Relationship) -> Dict:
