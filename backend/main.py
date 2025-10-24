@@ -3,6 +3,10 @@ PBL Backend API - Local Development Server
 FastAPI application for Perspective-Based Learning platform
 """
 
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI, HTTPException, UploadFile, File, Query, Body, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -22,8 +26,8 @@ from services.cost_tracker import CostTracker
 from routers.sensa_profile import router as profile_router
 from routers.sensa_questions import router as questions_router
 from routers.sensa_analogies import router as analogies_router
-# PBL router temporarily disabled - has incomplete model definitions
-# from routers.pbl_documents import router as pbl_router
+from routers.pbl_documents import router as pbl_router
+from routers.v7_documents import router as v7_router
 
 app = FastAPI(title="PBL API", version="2.0.0")
 
@@ -37,8 +41,38 @@ async def startup():
     connected = await db.connect()
     if connected:
         print("✅ Database connected - PBL features enabled")
+        # Load courses from database
+        try:
+            rows = await db.fetch("SELECT * FROM courses")
+            for row in rows:
+                # Convert UUID to string
+                course_id = str(row[0])  # First column is course_id
+                courses_db[course_id] = Course(
+                    id=course_id,
+                    name=row[2],  # name
+                    description=row[3] or "",  # description
+                    created_at=row[5].isoformat() if row[5] else datetime.now().isoformat(),  # created_at
+                    updated_at=row[6].isoformat() if row[6] else datetime.now().isoformat(),  # updated_at
+                    document_count=0
+                )
+            print(f"📦 Loaded {len(courses_db)} courses from database: {list(courses_db.keys())}")
+        except Exception as e:
+            print(f"⚠️  Failed to load courses: {e}")
+            import traceback
+            traceback.print_exc()
     else:
         print("⚠️  Database not connected - PBL features limited")
+        # Seed default course for local development
+        print("📦 Seeding default course for local development...")
+        courses_db["course-4"] = Course(
+            id="course-4",
+            name="Default Course",
+            description="Auto-created for local development",
+            created_at=datetime.now().isoformat(),
+            updated_at=datetime.now().isoformat(),
+            document_count=0
+        )
+        print("✅ Default course created: course-4")
 
 @app.on_event("shutdown")
 async def shutdown():
@@ -50,7 +84,8 @@ async def shutdown():
 app.include_router(profile_router)
 app.include_router(questions_router)
 app.include_router(analogies_router)
-# app.include_router(pbl_router)  # Will enable once database is connected
+app.include_router(pbl_router)
+app.include_router(v7_router)
 
 # CORS configuration
 app.add_middleware(
@@ -65,6 +100,41 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    """Simple health check endpoint"""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "courses_count": len(courses_db),
+        "documents_count": len(documents_db)
+    }
+
+# API Health endpoint
+@app.get("/api/health")
+async def api_health():
+    """Get API health status including external services"""
+    try:
+        from services.api_health_monitor import get_health_monitor
+        from services.bedrock_client_v2 import get_bedrock_client
+        
+        monitor = get_health_monitor()
+        bedrock = get_bedrock_client()
+        
+        return {
+            "status": "healthy",
+            "timestamp": datetime.now().isoformat(),
+            "services": monitor.get_health_report(),
+            "bedrock": bedrock.get_health_status()
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
 
 # In-memory storage (for local development without database)
 courses_db = {}
@@ -355,17 +425,39 @@ async def upload_document(
         print(f"\n{'='*80}", flush=True)
         print(f"🚀 STARTING PBL PIPELINE PROCESSING", flush=True)
         print(f"{'='*80}", flush=True)
-        print(f"🔧 Initializing pipeline...", flush=True)
-        pipeline = get_pbl_pipeline()
-        print(f"✅ Pipeline initialized", flush=True)
         
-        print(f"📊 Processing document...", flush=True)
-        result = await pipeline.process_document(
-            pdf_path=temp_path,
-            document_id=uuid.UUID(doc_id.replace('doc-', '00000000-0000-0000-0000-00000000000'))
-        )
-        print(f"✅ Pipeline processing complete", flush=True)
-        print(f"   Success: {result.get('success', False)}", flush=True)
+        try:
+            print(f"🔧 Initializing pipeline...", flush=True)
+            sys.stdout.flush()
+            pipeline = get_pbl_pipeline()
+            print(f"✅ Pipeline initialized: {type(pipeline).__name__}", flush=True)
+            print(f"   Available methods: {[m for m in dir(pipeline) if not m.startswith('_')]}", flush=True)
+            sys.stdout.flush()
+        except Exception as init_error:
+            print(f"❌ PIPELINE INITIALIZATION FAILED!", flush=True)
+            print(f"   Error: {str(init_error)}", flush=True)
+            import traceback
+            traceback.print_exc()
+            sys.stdout.flush()
+            raise
+        
+        try:
+            print(f"📊 Processing document...", flush=True)
+            sys.stdout.flush()
+            result = await pipeline.process_document(
+                pdf_path=temp_path,
+                document_id=uuid.UUID(doc_id.replace('doc-', '00000000-0000-0000-0000-00000000000'))
+            )
+            print(f"✅ Pipeline processing complete", flush=True)
+            print(f"   Success: {result.get('success', False)}", flush=True)
+            sys.stdout.flush()
+        except Exception as proc_error:
+            print(f"❌ PIPELINE PROCESSING FAILED!", flush=True)
+            print(f"   Error: {str(proc_error)}", flush=True)
+            import traceback
+            traceback.print_exc()
+            sys.stdout.flush()
+            raise
         
         # Create document record
         document = Document(
@@ -466,9 +558,11 @@ async def delete_document(document_id: str):
 @app.get("/status/{task_id}")
 async def get_processing_status(task_id: str):
     """Get document processing status"""
-    # Simulate processing completion
+    # Map task_id to document_id (in a real system, this would query a database)
+    # For now, use the task_id as the document_id since they're both UUIDs
     return {
         "task_id": task_id,
+        "document_id": task_id,  # Include document_id so frontend can navigate
         "status": "completed",
         "progress": 100,
         "message": "Document processed successfully",

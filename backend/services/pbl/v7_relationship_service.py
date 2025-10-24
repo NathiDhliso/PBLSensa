@@ -1,28 +1,28 @@
 """
 V7 Relationship Service with RAG-Powered Detection
-Extends existing RelationshipService with pgvector semantic search for context-aware relationships.
+Uses pgvector semantic search for context-aware relationships.
 """
 
 import logging
 import json
 from typing import List, Dict, Optional
-from backend.services.pbl.relationship_service import RelationshipService
-from backend.services.embedding_service import get_embedding_service
-from backend.models.pbl_concept import Concept
-from backend.models.pbl_relationship import Relationship
+from services.embedding_service import get_embedding_service
+from models.pbl_concept import Concept
+from models.pbl_relationship import Relationship
 
 logger = logging.getLogger(__name__)
 
 
-class V7RelationshipService(RelationshipService):
+class RelationshipService:
     """
-    Extends existing RelationshipService with RAG-powered detection.
+    Relationship service with RAG-powered detection.
     Uses pgvector to find related concepts before asking Claude.
     """
     
     def __init__(self):
-        super().__init__()
         self.embedding_service = get_embedding_service()
+        self.db = None  # Will be injected
+        self.bedrock_client = None  # Will be injected
     
     async def detect_relationships_v7(
         self,
@@ -243,6 +243,6 @@ Return as JSON array:
             return []
 
 
-def get_v7_relationship_service() -> V7RelationshipService:
-    """Factory function to get V7RelationshipService instance"""
-    return V7RelationshipService()
+def get_relationship_service() -> RelationshipService:
+    """Factory function to get RelationshipService instance"""
+    return RelationshipService()

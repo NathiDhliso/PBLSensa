@@ -6,7 +6,7 @@ Suggests relevant analogies from user's past documents for new concepts.
 
 from typing import List, Optional
 from dataclasses import dataclass
-from models.concept import Concept
+from models.pbl_concept import Concept
 from models.analogy import Analogy
 from services.sensa.analogy_service import AnalogyService
 

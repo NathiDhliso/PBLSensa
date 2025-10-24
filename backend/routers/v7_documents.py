@@ -6,12 +6,18 @@ Handles v7.0 PDF processing endpoints with enhanced accuracy features.
 import logging
 from fastapi import APIRouter, UploadFile, File, Depends, BackgroundTasks, HTTPException
 from typing import Dict, Any
-from backend.services.pbl.v7_pipeline import get_v7_pipeline
+from services.pbl.v7_pipeline import get_v7_pipeline
 # Note: v7_pipeline now uses existing services (PDFParser, ConceptService) with v7 methods
-from backend.services.layer0.document_type_detector import get_document_type_detector
-from backend.services.auth import get_current_user
+from services.layer0.document_type_detector import get_document_type_detector
+# TODO: Implement proper authentication
+# from services.auth import get_current_user
 
 logger = logging.getLogger(__name__)
+
+# Temporary placeholder for authentication
+def get_current_user():
+    """Placeholder for user authentication - returns a default user ID"""
+    return "default-user"
 
 router = APIRouter(prefix="/api/v7", tags=["v7-documents"])
 

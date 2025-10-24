@@ -16,7 +16,7 @@ from io import BytesIO
 
 # REUSE: Import existing V7 pipeline
 try:
-    from backend.services.pbl.v7_pipeline import get_v7_pipeline
+    from services.pbl.v7_pipeline import get_v7_pipeline
     V7_AVAILABLE = True
 except ImportError:
     V7_AVAILABLE = False

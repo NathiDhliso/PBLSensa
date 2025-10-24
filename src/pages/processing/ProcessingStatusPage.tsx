@@ -60,8 +60,13 @@ export const ProcessingStatusPage = () => {
   };
 
   const handleViewConceptMap = () => {
-    // Navigate to PBL courses - document_id is not part of ProcessingStatus type
-    navigate('/pbl/courses');
+    // Navigate to PBL document page with the document_id
+    if (status?.document_id) {
+      navigate(`/pbl/${status.document_id}`);
+    } else {
+      // Fallback to courses page if no document_id
+      navigate('/pbl/courses');
+    }
   };
 
   const handleTryAgain = () => {

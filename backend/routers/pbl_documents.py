@@ -187,22 +187,7 @@ async def get_concepts(
             structure_type=structure_type
         )
         
-        return [
-            ConceptResponse(
-                id=str(c.id),
-                document_id=str(c.document_id),
-                term=c.term,
-                definition=c.definition,
-                source_sentences=c.source_sentences,
-                page_number=c.page_number,
-                surrounding_concepts=c.surrounding_concepts,
-                structure_type=c.structure_type,
-                importance_score=c.importance_score,
-                validated=c.validated,
-                created_at=c.created_at.isoformat()
-            )
-            for c in concepts
-        ]
+        return concepts
         
     except Exception as e:
         raise HTTPException(
@@ -214,7 +199,7 @@ async def get_concepts(
 @router.post("/documents/{document_id}/concepts/validate")
 async def validate_concepts(
     document_id: str,
-    validation: ConceptValidation
+    validation: ConceptValidationRequest
 ):
     """
     Bulk validate concepts.
@@ -242,7 +227,7 @@ async def validate_concepts(
         )
 
 
-@router.get("/concepts/{concept_id}", response_model=ConceptResponse)
+@router.get("/concepts/{concept_id}", response_model=Concept)
 async def get_concept(concept_id: str):
     """Get a specific concept by ID."""
     try:
@@ -251,19 +236,7 @@ async def get_concept(concept_id: str):
         if not concept:
             raise HTTPException(status_code=404, detail="Concept not found")
         
-        return ConceptResponse(
-            id=str(concept.id),
-            document_id=str(concept.document_id),
-            term=concept.term,
-            definition=concept.definition,
-            source_sentences=concept.source_sentences,
-            page_number=concept.page_number,
-            surrounding_concepts=concept.surrounding_concepts,
-            structure_type=concept.structure_type,
-            importance_score=concept.importance_score,
-            validated=concept.validated,
-            created_at=concept.created_at.isoformat()
-        )
+        return concept
         
     except HTTPException:
         raise
@@ -274,7 +247,7 @@ async def get_concept(concept_id: str):
         )
 
 
-@router.put("/concepts/{concept_id}", response_model=ConceptResponse)
+@router.put("/concepts/{concept_id}", response_model=Concept)
 async def update_concept(
     concept_id: str,
     updates: ConceptUpdate
@@ -286,19 +259,7 @@ async def update_concept(
         if not concept:
             raise HTTPException(status_code=404, detail="Concept not found")
         
-        return ConceptResponse(
-            id=str(concept.id),
-            document_id=str(concept.document_id),
-            term=concept.term,
-            definition=concept.definition,
-            source_sentences=concept.source_sentences,
-            page_number=concept.page_number,
-            surrounding_concepts=concept.surrounding_concepts,
-            structure_type=concept.structure_type,
-            importance_score=concept.importance_score,
-            validated=concept.validated,
-            created_at=concept.created_at.isoformat()
-        )
+        return concept
         
     except HTTPException:
         raise
@@ -400,22 +361,13 @@ async def get_structures(
         )
 
 
-@router.post("/relationships", response_model=RelationshipResponse)
+@router.post("/relationships", response_model=Relationship)
 async def create_relationship(relationship: RelationshipCreate):
     """Create a new relationship between concepts."""
     try:
         created = await relationship_service.create(relationship)
         
-        return RelationshipResponse(
-            id=str(created.id),
-            source_concept_id=str(created.source_concept_id),
-            target_concept_id=str(created.target_concept_id),
-            relationship_type=created.relationship_type,
-            structure_category=created.structure_category,
-            strength=created.strength,
-            validated_by_user=created.validated_by_user,
-            created_at=created.created_at.isoformat()
-        )
+        return created
         
     except Exception as e:
         raise HTTPException(
@@ -595,7 +547,7 @@ async def update_visualization(
 async def update_node(
     visualization_id: str,
     node_id: str,
-    updates: NodeUpdate
+    updates: NodeUpdateRequest
 ):
     """Update a single node in the visualization."""
     try:
@@ -625,7 +577,7 @@ async def update_node(
 @router.post("/visualizations/{visualization_id}/edges")
 async def create_edge(
     visualization_id: str,
-    edge: EdgeCreate
+    edge: EdgeCreateRequest
 ):
     """Create a new edge in the visualization."""
     try:

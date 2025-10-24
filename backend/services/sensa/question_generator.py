@@ -8,7 +8,7 @@ import json
 import random
 from typing import List, Dict, Optional
 from pathlib import Path
-from models.concept import Concept
+from models.pbl_concept import Concept
 from models.user_profile import UserProfile
 from models.question import Question, QuestionType, QuestionTemplate
 from services.bedrock_client import BedrockAnalogyGenerator

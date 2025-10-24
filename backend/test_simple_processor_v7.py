@@ -59,7 +59,7 @@ def test_v7_availability():
         
         if V7_AVAILABLE:
             print("✅ V7 pipeline is available")
-            from backend.services.pbl.v7_pipeline import get_v7_pipeline
+            from services.pbl.v7_pipeline import get_v7_pipeline
             pipeline = get_v7_pipeline()
             print(f"   Pipeline type: {type(pipeline).__name__}")
         else:

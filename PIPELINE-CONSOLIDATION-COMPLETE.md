@@ -22,6 +22,11 @@
 - Backward compatibility aliases in place
 - No code changes required in main.py or routers
 
+### 4. Deprecated Code Removed
+- ✅ Deleted `backend/services/pbl/pbl_pipeline.py`
+- ✅ Clean codebase with single pipeline
+- ✅ Backward compat maintained via aliases
+
 ---
 
 ## Architecture
@@ -78,9 +83,12 @@ v7_pipeline.py (SINGLE PIPELINE)
    - Calls V7 pipeline internally
    - Transforms results for backward compat
 
-3. **backend/services/pbl/pbl_pipeline.py**
-   - Added deprecation notice
-   - Warns users to use V7
+## Files Removed
+
+1. **backend/services/pbl/pbl_pipeline.py** ✅ DELETED
+   - Deprecated pipeline removed
+   - All functionality now in V7 pipeline
+   - Backward compat maintained via __init__.py aliases
 
 ---
 

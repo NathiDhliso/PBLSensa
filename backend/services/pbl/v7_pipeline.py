@@ -8,15 +8,16 @@ import json
 from typing import List, Dict, Any
 from dataclasses import dataclass, field
 from datetime import datetime
-from backend.services.pbl.pdf_parser import get_pdf_parser, V7ParseResult
-from backend.services.pbl.hierarchy_extractor import get_hierarchy_extractor, HierarchyNode
-from backend.services.pbl.concept_service import get_concept_service
-from backend.services.pbl.v7_relationship_service import get_v7_relationship_service
-from backend.services.layer0.layer0_cache_service import get_layer0_cache_service
-from backend.services.layer0.pdf_hash_service import get_pdf_hash_service
-from backend.services.cost_tracker import get_cost_tracker
-from backend.models.pbl_concept import Concept
-from backend.models.pbl_relationship import Relationship
+from services.pbl.pdf_parser import get_pdf_parser, V7ParseResult
+from services.pbl.hierarchy_extractor import get_hierarchy_extractor, HierarchyNode
+from services.pbl.concept_service import get_concept_service
+from services.pbl.v7_relationship_service import get_relationship_service
+from services.pbl.concept_deduplicator import get_concept_deduplicator
+from services.layer0.layer0_cache_service import get_layer0_cache_service
+from services.layer0.pdf_hash_service import get_pdf_hash_service
+from services.layer0.layer0_cost_optimizer import get_layer0_cost_optimizer
+from models.pbl_concept import Concept
+from models.pbl_relationship import Relationship
 
 logger = logging.getLogger(__name__)
 
@@ -40,14 +41,53 @@ class V7Pipeline:
     """
     
     def __init__(self):
+        # Database connection
+        from config.db_connection import get_db_connection
+        self.db = get_db_connection()
+        
         # Reuse existing services with v7 methods
         self.parser = get_pdf_parser()  # Has parse_with_v7() method
         self.hierarchy_extractor = get_hierarchy_extractor()
         self.concept_service = get_concept_service()  # Has extract_concepts_v7() method
-        self.relationship_service = get_v7_relationship_service()
+        self.relationship_service = get_relationship_service()
+        self.deduplicator = get_concept_deduplicator()  # NEW: Cleaner results
         self.cache_service = get_layer0_cache_service()
         self.hash_service = get_pdf_hash_service()
-        self.cost_tracker = get_cost_tracker()
+        self.cost_optimizer = get_layer0_cost_optimizer()  # NEW: Better cost tracking
+    
+    async def process_document(
+        self,
+        pdf_path: str,
+        document_id: str,
+        user_id: str = "system"
+    ) -> Dict[str, Any]:
+        """
+        Backward compatibility wrapper for process_document_v7.
+        Returns dict format expected by main.py upload endpoint.
+        """
+        try:
+            result = await self.process_document_v7(
+                document_id=str(document_id),
+                pdf_path=pdf_path,
+                user_id=user_id
+            )
+            
+            return {
+                'success': True,
+                'results': {
+                    'concepts': [self._concept_to_dict(c) for c in result.concepts],
+                    'relationships': [self._relationship_to_dict(r) for r in result.relationships],
+                    'hierarchy': [self._node_to_dict(n) for n in result.hierarchy],
+                    'metrics': result.metrics
+                }
+            }
+        except Exception as e:
+            logger.error(f"Processing failed: {e}", exc_info=True)
+            return {
+                'success': False,
+                'error': str(e),
+                'results': {}
+            }
     
     async def process_document_v7(
         self,
@@ -72,12 +112,23 @@ class V7Pipeline:
         
         # Step 1: Check cache
         pdf_hash, metadata = self.hash_service.compute_hash_and_metadata(pdf_path)
-        cached = self.cache_service.lookup_by_hash(pdf_hash, version='v7')
+        cached = self.cache_service.lookup_by_hash(pdf_hash)
         
         if cached:
             logger.info(f"Cache HIT for document {document_id}")
             await self._update_status(document_id, "Loaded from cache", 100)
-            return cached.results
+            
+            # Convert cached dict back to V7ProcessingResult
+            cached_data = cached.results if hasattr(cached, 'results') else cached
+            return V7ProcessingResult(
+                document_id=cached_data.get('document_id', document_id),
+                hierarchy=cached_data.get('hierarchy', []),
+                concepts=cached_data.get('concepts', []),
+                relationships=cached_data.get('relationships', []),
+                parse_method=cached_data.get('parse_method', 'cached'),
+                confidence=cached_data.get('confidence', 1.0),
+                metrics=cached_data.get('metrics', {})
+            )
         
         logger.info(f"Cache MISS - processing document {document_id}")
         
@@ -122,6 +173,19 @@ class V7Pipeline:
         
         await self._update_status(document_id, f"Extracted {len(all_concepts)} concepts", 60)
         
+        # Step 4.5: Deduplicate concepts (NEW)
+        await self._update_status(document_id, "Removing duplicates...", 65)
+        duplicates = await self.deduplicator.find_duplicates(document_id, similarity_threshold=0.95)
+        
+        if duplicates:
+            logger.info(f"Found {len(duplicates)} duplicate pairs, merging...")
+            for dup_pair in duplicates:
+                await self.deduplicator.merge_concepts(dup_pair.concept_a_id, dup_pair.concept_b_id)
+            
+            # Refresh concept list after merging
+            all_concepts = [c for c in all_concepts if not c.merged_into]
+            await self._update_status(document_id, f"Deduplicated to {len(all_concepts)} unique concepts", 68)
+        
         # Step 5: Detect relationships with RAG
         await self._update_status(document_id, "Detecting relationships...", 70)
         all_relationships = []
@@ -151,9 +215,25 @@ class V7Pipeline:
             parse_confidence=parse_result.confidence
         )
         
-        # Calculate metrics
+        # Calculate metrics with enhanced cost tracking
         processing_time = (datetime.now() - start_time).total_seconds()
         high_confidence_concepts = len([c for c in all_concepts if c.confidence > 0.7])
+        
+        # Log processing cost
+        estimate = self.cost_optimizer.estimate_processing_cost(
+            doc_type=parse_result.metadata.get('doc_type'),
+            page_count=parse_result.metadata.get('page_count', 1),
+            has_cache=False
+        )
+        
+        self.cost_optimizer.log_processing(
+            pdf_hash=pdf_hash,
+            actual_cost=estimate.total,
+            cache_hit=False,
+            processing_time=processing_time * 1000,
+            document_id=document_id,
+            user_id=user_id
+        )
         
         metrics = {
             'parse_method': parse_result.method_used,
@@ -161,8 +241,10 @@ class V7Pipeline:
             'concepts_extracted': len(all_concepts),
             'high_confidence_concepts': high_confidence_concepts,
             'relationships_detected': len(all_relationships),
+            'duplicates_merged': len(duplicates) if duplicates else 0,
             'cache_hit': False,
-            'total_cost': await self.cost_tracker.get_total_cost()
+            'total_cost': estimate.total,
+            'cost_breakdown': estimate.breakdown
         }
         
         await self._store_metrics(document_id, metrics)
@@ -180,10 +262,21 @@ class V7Pipeline:
             metrics=metrics
         )
         
-        self.cache_service.store_results(
-            pdf_hash=pdf_hash,
-            results=result,
-            version='v7'
+        # Store in cache (convert result to dict for storage)
+        result_dict = {
+            'document_id': document_id,
+            'hierarchy': [self._node_to_dict(n) for n in hierarchy],
+            'concepts': [self._concept_to_dict(c) for c in all_concepts],
+            'relationships': [self._relationship_to_dict(r) for r in all_relationships],
+            'parse_method': parse_result.method_used,
+            'confidence': parse_result.confidence,
+            'metrics': metrics
+        }
+        
+        self.cache_service.store_analogies(
+            cache_key=pdf_hash,
+            data=result_dict,
+            metadata={'version': 'v7', 'page_count': metadata.get('page_count', 0)}
         )
         
         logger.info(f"V7 processing complete for document {document_id}")
@@ -194,23 +287,16 @@ class V7Pipeline:
         Update processing status for real-time UI updates.
         """
         try:
-            await self.db.execute(
-                """
-                UPDATE documents
-                SET processing_status = %s,
-                    processing_progress = %s,
-                    updated_at = NOW()
-                WHERE id = %s
-                """,
-                (message, progress, document_id)
-            )
+            # NOTE: The processed_documents table doesn't have status tracking columns yet
+            # This would need a separate task_status table or additional columns
+            # For now, just log the status
             
             # Emit WebSocket event for real-time updates (if available)
             # await self.websocket_manager.broadcast(...)
             
             logger.debug(f"Status update: {message} ({progress}%)")
         except Exception as e:
-            logger.error(f"Failed to update status: {e}")
+            logger.warning(f"Failed to update status (non-critical): {e}")
     
     async def _store_results(
         self,
@@ -221,21 +307,20 @@ class V7Pipeline:
         parse_method: str,
         parse_confidence: float
     ):
-        """Store all results in database"""
+        """Store all results in database (if connected)"""
         try:
-            # Store hierarchy as JSON
-            hierarchy_json = json.dumps([self._node_to_dict(n) for n in hierarchy])
+            # Only store in database if connected
+            if not self.db or not hasattr(self.db, 'is_connected') or not self.db.is_connected:
+                logger.info("Database not connected - skipping database storage (using in-memory)")
+                return
             
-            await self.db.execute(
-                """
-                UPDATE documents
-                SET hierarchy_json = %s,
-                    parse_method = %s,
-                    parse_confidence = %s
-                WHERE id = %s
-                """,
-                (hierarchy_json, parse_method, parse_confidence, document_id)
-            )
+            # Note: hierarchy, parse_method, and parse_confidence are not stored in database yet
+            # They would need additional columns added to processed_documents table
+            # For now, we just store concepts and relationships
+            
+            logger.info(f"Storing results for document {document_id}")
+            logger.info(f"  Hierarchy nodes: {len(hierarchy)}")
+            logger.info(f"  Parse method: {parse_method}, confidence: {parse_confidence}")
             
             # Bulk insert concepts
             for concept in concepts:
@@ -244,13 +329,12 @@ class V7Pipeline:
                     INSERT INTO concepts (
                         document_id, term, definition, confidence,
                         methods_found, extraction_methods, structure_id, structure_type
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                    ON CONFLICT DO NOTHING
                     """,
-                    (
-                        document_id, concept.term, concept.definition, concept.confidence,
-                        concept.methods_found, concept.extraction_methods,
-                        concept.structure_id, concept.structure_type
-                    )
+                    document_id, concept.term, concept.definition, concept.confidence,
+                    concept.methods_found, concept.extraction_methods,
+                    concept.structure_id, concept.structure_type
                 )
             
             # Bulk insert relationships
@@ -260,12 +344,11 @@ class V7Pipeline:
                     INSERT INTO relationships (
                         source_concept_id, target_concept_id, relationship_type,
                         strength, similarity_score, claude_confidence, explanation
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    ON CONFLICT DO NOTHING
                     """,
-                    (
-                        rel.source_concept_id, rel.target_concept_id, rel.relationship_type,
-                        rel.strength, rel.similarity_score, rel.claude_confidence, rel.explanation
-                    )
+                    rel.source_concept_id, rel.target_concept_id, rel.relationship_type,
+                    rel.strength, rel.similarity_score, rel.claude_confidence, rel.explanation
                 )
             
             logger.info(f"Stored {len(concepts)} concepts and {len(relationships)} relationships")
@@ -273,21 +356,25 @@ class V7Pipeline:
             logger.error(f"Failed to store results: {e}")
     
     async def _store_metrics(self, document_id: str, metrics: Dict):
-        """Store processing metrics"""
+        """Store processing metrics (if database connected)"""
         try:
+            # Only store in database if connected
+            if not self.db or not hasattr(self.db, 'is_connected') or not self.db.is_connected:
+                logger.info("Database not connected - skipping metrics storage")
+                return
+            
             await self.db.execute(
                 """
                 INSERT INTO v7_processing_metrics (
                     document_id, parse_method, parse_duration_ms,
                     concepts_extracted, high_confidence_concepts,
                     relationships_detected, cache_hit, total_cost
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                ON CONFLICT DO NOTHING
                 """,
-                (
-                    document_id, metrics['parse_method'], metrics['parse_duration_ms'],
-                    metrics['concepts_extracted'], metrics['high_confidence_concepts'],
-                    metrics['relationships_detected'], metrics['cache_hit'], metrics['total_cost']
-                )
+                document_id, metrics['parse_method'], metrics['parse_duration_ms'],
+                metrics['concepts_extracted'], metrics['high_confidence_concepts'],
+                metrics['relationships_detected'], metrics['cache_hit'], metrics['total_cost']
             )
         except Exception as e:
             logger.error(f"Failed to store metrics: {e}")
@@ -316,6 +403,32 @@ class V7Pipeline:
             'parent_id': node.parent_id,
             'children': [self._node_to_dict(c) for c in node.children],
             'page_range': node.page_range
+        }
+    
+    def _concept_to_dict(self, concept: Concept) -> Dict:
+        """Convert Concept to dictionary"""
+        return {
+            'id': str(concept.id) if hasattr(concept, 'id') else None,
+            'term': concept.term,
+            'definition': concept.definition,
+            'confidence': concept.confidence,
+            'methods_found': concept.methods_found,
+            'extraction_methods': concept.extraction_methods,
+            'structure_id': concept.structure_id,
+            'structure_type': concept.structure_type
+        }
+    
+    def _relationship_to_dict(self, rel: Relationship) -> Dict:
+        """Convert Relationship to dictionary"""
+        return {
+            'id': str(rel.id) if hasattr(rel, 'id') else None,
+            'source_concept_id': str(rel.source_concept_id),
+            'target_concept_id': str(rel.target_concept_id),
+            'relationship_type': rel.relationship_type,
+            'strength': rel.strength,
+            'similarity_score': rel.similarity_score,
+            'claude_confidence': rel.claude_confidence,
+            'explanation': rel.explanation
         }
 
 

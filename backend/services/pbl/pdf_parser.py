@@ -304,19 +304,6 @@ class PDFParser:
             
         except Exception as e:
             return False, f"Validation error: {str(e)}"
-
-
-# Singleton instance
-_pdf_parser_instance = None
-
-
-def get_pdf_parser() -> PDFParser:
-    """Get singleton PDF parser instance"""
-    global _pdf_parser_instance
-    if _pdf_parser_instance is None:
-        _pdf_parser_instance = PDFParser()
-    return _pdf_parser_instance
-
     
     # ==================== V7.0 ENHANCEMENTS ====================
     
@@ -486,3 +473,15 @@ def get_pdf_parser() -> PDFParser:
             return await self._parse_with_pdfplumber_v7(pdf_path)
         else:
             raise ValueError(f"Unknown method: {method}")
+
+
+# Singleton instance
+_pdf_parser_instance = None
+
+
+def get_pdf_parser() -> PDFParser:
+    """Get singleton PDF parser instance"""
+    global _pdf_parser_instance
+    if _pdf_parser_instance is None:
+        _pdf_parser_instance = PDFParser()
+    return _pdf_parser_instance

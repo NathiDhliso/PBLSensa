@@ -212,6 +212,7 @@ export interface UploadDocumentRequest {
 
 export interface ProcessingStatus {
   task_id: string;
+  document_id?: string;
   status: 'processing' | 'completed' | 'failed';
   current_stage?: string;
   progress?: number;

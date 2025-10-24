@@ -98,9 +98,9 @@ class Layer0CostOptimizer(CostTracker):
             )
         
         # OCR cost (if needed)
-        if doc_type.classification == "scanned":
+        if doc_type and doc_type.classification == "scanned":
             ocr_cost = page_count * self.OCR_COST_PER_PAGE
-        elif doc_type.classification == "hybrid":
+        elif doc_type and doc_type.classification == "hybrid":
             ocr_cost = doc_type.image_pages * self.OCR_COST_PER_PAGE
         else:
             ocr_cost = 0.0
@@ -128,8 +128,9 @@ class Layer0CostOptimizer(CostTracker):
             'storage': storage_cost
         }
         
+        doc_classification = doc_type.classification if doc_type else "unknown"
         logger.debug(
-            f"Cost estimate for {page_count} pages ({doc_type.classification}): "
+            f"Cost estimate for {page_count} pages ({doc_classification}): "
             f"${total:.4f}"
         )
         

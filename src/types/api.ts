@@ -226,6 +226,8 @@ export interface AnalogyFeedback {
 export interface ProcessingStatus {
   /** Unique task identifier */
   task_id: string;
+  /** Document identifier (UUID) */
+  document_id?: string;
   /** Current status of the task */
   status: 'pending' | 'processing' | 'completed' | 'failed';
   /** Progress percentage (0-100) */

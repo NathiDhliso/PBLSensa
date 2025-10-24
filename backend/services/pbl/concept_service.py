@@ -298,19 +298,6 @@ class ConceptService:
             'with_embeddings': 0
         }
 
-
-# Singleton instance
-_concept_service: Optional[ConceptService] = None
-
-
-def get_concept_service() -> ConceptService:
-    """Get or create the singleton ConceptService instance"""
-    global _concept_service
-    if _concept_service is None:
-        _concept_service = ConceptService()
-    return _concept_service
-
-    
     # ==================== V7.0 ENHANCEMENTS ====================
     
     def __init_v7_models(self):
@@ -529,3 +516,15 @@ def get_concept_service() -> ConceptService:
         
         logger.info(f"Combined {len(combined)} unique terms from ensemble")
         return combined
+
+
+# Singleton instance
+_concept_service: Optional[ConceptService] = None
+
+
+def get_concept_service() -> ConceptService:
+    """Get or create the singleton ConceptService instance"""
+    global _concept_service
+    if _concept_service is None:
+        _concept_service = ConceptService()
+    return _concept_service

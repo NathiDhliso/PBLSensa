@@ -8,14 +8,16 @@ Ties together hashing, detection, caching, and cost optimization.
 import time
 import logging
 import asyncio
-from typing import Optional, Dict
+from typing import Optional, Dict, TYPE_CHECKING
 from uuid import UUID
 from dataclasses import dataclass, asdict
 from .pdf_hash_service import get_pdf_hash_service
 from .document_type_detector import get_document_type_detector, DocumentType
 from .layer0_cache_service import get_layer0_cache_service
 from .layer0_cost_optimizer import get_layer0_cost_optimizer
-from services.pbl.pbl_pipeline import PBLPipeline
+
+if TYPE_CHECKING:
+    from services.pbl.v7_pipeline import V7Pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -56,13 +58,21 @@ class Layer0Orchestrator:
         self.type_detector = get_document_type_detector()
         self.cache_service = get_layer0_cache_service()
         self.cost_optimizer = get_layer0_cost_optimizer()
-        self.pbl_pipeline = PBLPipeline(
-            rate_limiter=None,
-            cost_tracker=self.cost_optimizer,
-            cache_manager=self.cache_service
-        )
+        self.pbl_pipeline = None  # Lazy loaded to avoid circular import
         
-        logger.info("Layer0Orchestrator initialized with PBL pipeline integration")
+        logger.info("Layer0Orchestrator initialized")
+    
+    def _get_pipeline(self):
+        """Lazy load the PBL pipeline to avoid circular imports."""
+        if self.pbl_pipeline is None:
+            from services.pbl.v7_pipeline import V7Pipeline
+            self.pbl_pipeline = V7Pipeline(
+                rate_limiter=None,
+                cost_tracker=self.cost_optimizer,
+                cache_manager=self.cache_service
+            )
+            logger.info("PBL pipeline initialized")
+        return self.pbl_pipeline
     
     async def _retry_with_exponential_backoff(
         self,
@@ -265,8 +275,9 @@ class Layer0Orchestrator:
             # Step 5: Process through PBL pipeline with retry
             logger.info("Processing through PBL pipeline...")
             try:
+                pipeline = self._get_pipeline()
                 pipeline_results = await self._retry_with_exponential_backoff(
-                    self.pbl_pipeline.process_document,
+                    pipeline.process_document,
                     "PBL pipeline processing",
                     pdf_path=pdf_path,
                     document_id=document_id,
