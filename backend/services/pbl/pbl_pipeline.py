@@ -1,11 +1,28 @@
 """
 PBL Pipeline Orchestrator
 
-Coordinates all PBL services to process documents end-to-end.
-Tracks progress and handles errors gracefully.
+DEPRECATED: This module is deprecated. Use backend.services.pbl.v7_pipeline instead.
+
+The V7 pipeline provides all PBL pipeline features plus:
+- Multi-method parsing (LlamaParse, Textract, pdfplumber)
+- Ensemble concept extraction (KeyBERT + YAKE + spaCy)
+- RAG-powered relationship detection
+- Layer 0 caching integration
+- Hierarchical structure preservation
+- Better accuracy (70%+ vs 65-75%)
+
+For backward compatibility, get_pbl_pipeline() in __init__.py now returns V7Pipeline.
 """
 
+import warnings
 import logging
+
+warnings.warn(
+    "pbl_pipeline is deprecated, use v7_pipeline instead. "
+    "get_pbl_pipeline() now returns V7Pipeline for backward compatibility.",
+    DeprecationWarning,
+    stacklevel=2
+)
 from typing import Dict, Optional, Callable
 from uuid import UUID
 from datetime import datetime

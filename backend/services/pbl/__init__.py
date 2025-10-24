@@ -10,7 +10,11 @@ from services.pbl.relationship_service import RelationshipService, get_relations
 from services.pbl.concept_deduplicator import ConceptDeduplicator, get_concept_deduplicator
 from services.pbl.concept_service import ConceptService, get_concept_service
 from services.pbl.visualization_service import VisualizationService, get_visualization_service
-from services.pbl.pbl_pipeline import PBLPipeline, get_pbl_pipeline
+from services.pbl.v7_pipeline import V7Pipeline, get_v7_pipeline
+
+# Backward compatibility aliases - get_pbl_pipeline now returns V7Pipeline
+get_pbl_pipeline = get_v7_pipeline
+PBLPipeline = V7Pipeline
 
 __all__ = [
     'PDFParser',
@@ -25,6 +29,8 @@ __all__ = [
     'get_concept_service',
     'VisualizationService',
     'get_visualization_service',
-    'PBLPipeline',
-    'get_pbl_pipeline',
+    'V7Pipeline',
+    'get_v7_pipeline',
+    'PBLPipeline',  # Backward compat alias to V7Pipeline
+    'get_pbl_pipeline',  # Backward compat alias to get_v7_pipeline
 ]
