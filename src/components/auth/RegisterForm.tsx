@@ -138,7 +138,10 @@ export function RegisterForm() {
             Welcome to Sensa Learn!
           </h3>
           <p className="text-text-medium dark:text-dark-text-secondary">
-            Your account has been created successfully. Redirecting to your dashboard...
+            Get ready to transform your PDFs into interactive concept maps with AI-powered analogies.
+          </p>
+          <p className="text-sm text-text-light dark:text-dark-text-tertiary">
+            Redirecting to email verification...
           </p>
         </div>
       </div>

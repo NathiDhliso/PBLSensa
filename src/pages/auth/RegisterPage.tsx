@@ -44,9 +44,23 @@ export function RegisterPage() {
             <h1 className="text-3xl font-bold text-deep-amethyst dark:text-dark-accent-amethyst mb-2">
               Create Account
             </h1>
-            <p className="text-text-medium dark:text-dark-text-secondary">
-              Join Sensa Learn and start your personalized learning journey
+            <p className="text-text-medium dark:text-dark-text-secondary mb-3">
+              Transform your PDFs into interactive concept maps
             </p>
+            <div className="flex items-center justify-center gap-4 text-xs text-text-light dark:text-dark-text-tertiary">
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-warm-coral" />
+                AI-Powered Analogies
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-warm-coral" />
+                Visual Learning
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-warm-coral" />
+                Personalized
+              </span>
+            </div>
           </div>
 
           {/* Registration Form */}
