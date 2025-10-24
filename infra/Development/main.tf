@@ -471,7 +471,7 @@ resource "aws_db_parameter_group" "postgres15" {
 resource "aws_db_instance" "main" {
   identifier     = "${var.project_name}-${var.environment}-${var.developer_id}-db"
   engine         = "postgres"
-  engine_version = "15.8"
+  engine_version = "15.10"  # Updated from 15.8 (no longer available)
   instance_class = "db.t4g.medium"
 
   allocated_storage     = 50

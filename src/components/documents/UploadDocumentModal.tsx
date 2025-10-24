@@ -62,7 +62,21 @@ export const UploadDocumentModal: React.FC<UploadDocumentModalProps> = ({
         sha256Hash,
       });
 
-      showToast('success', 'Document uploaded successfully');
+      // Show appropriate toast based on cache status
+      if (result.cached) {
+        showToast(
+          'success',
+          `Document returned from cache (${Math.round(result.processing_time_ms || 0)}ms)`
+        );
+      } else {
+        const timeMsg = result.processing_time_ms 
+          ? ` (${(result.processing_time_ms / 1000).toFixed(1)}s)`
+          : '';
+        const typeMsg = result.document_type 
+          ? ` - ${result.document_type} PDF`
+          : '';
+        showToast('success', `Document processed successfully${timeMsg}${typeMsg}`);
+      }
       
       // Navigate to processing status page
       if (result.task_id) {

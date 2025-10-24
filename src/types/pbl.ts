@@ -201,13 +201,6 @@ export interface UploadDocumentRequest {
   user_id: string;
 }
 
-export interface UploadDocumentResponse {
-  task_id: string;
-  document_id: string;
-  status: 'processing' | 'completed' | 'failed';
-  message: string;
-}
-
 export interface ProcessingStatus {
   task_id: string;
   status: 'processing' | 'completed' | 'failed';

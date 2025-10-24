@@ -11,7 +11,8 @@ param(
     [string]$Environment = "development",
     [string]$DeveloperId = "dev",
     [string]$Region = "eu-west-1",
-    [switch]$Rollback = $false
+    [switch]$Rollback = $false,
+    [string]$MigrationFile = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -26,18 +27,27 @@ $RdsEndpoint = "pbl-development-dev-db.cn82qs0k811m.eu-west-1.rds.amazonaws.com"
 $DatabaseName = "pbl_development"
 $Port = 5432
 
-if ($Rollback) {
-    $MigrationFile = "20250122_0006_ai_analogy_generation_rollback.sql"
-    Write-Host "⚠️  ROLLBACK MODE - This will remove the AI analogy tables!" -ForegroundColor Yellow
+if ([string]::IsNullOrWhiteSpace($MigrationFile)) {
+    if ($Rollback) {
+        $MigrationFile = "migrations/20250122_0006_ai_analogy_generation_rollback.sql"
+        Write-Host "⚠️  ROLLBACK MODE - This will remove the AI analogy tables!" -ForegroundColor Yellow
+    } else {
+        $MigrationFile = "migrations/20250122_0006_ai_analogy_generation.sql"
+        Write-Host "✅ MIGRATION MODE - This will create AI analogy tables" -ForegroundColor Green
+    }
 } else {
-    $MigrationFile = "20250122_0006_ai_analogy_generation.sql"
-    Write-Host "✅ MIGRATION MODE - This will create AI analogy tables" -ForegroundColor Green
+    # Check if it's a rollback file
+    if ($MigrationFile -like "*rollback*") {
+        Write-Host "⚠️  ROLLBACK MODE - This will revert database changes!" -ForegroundColor Yellow
+    } else {
+        Write-Host "✅ MIGRATION MODE - This will apply database changes" -ForegroundColor Green
+    }
 }
 
 Write-Host ""
 
 # Read migration file content
-$MigrationPath = "migrations/$MigrationFile"
+$MigrationPath = $MigrationFile
 if (-not (Test-Path $MigrationPath)) {
     Write-Host "❌ Migration file not found: $MigrationPath" -ForegroundColor Red
     exit 1
@@ -103,30 +113,30 @@ $MigrationSQL
 # Encode SQL for command
 $EncodedSQL = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($TempSQL))
 
-# Create SSM command document
-$CommandScript = @"
-#!/bin/bash
-set -e
-
-# Decode SQL
-echo '$EncodedSQL' | base64 -d > /tmp/migration.sql
-
-# Install psql if not present
-if ! command -v psql &> /dev/null; then
-    echo "Installing PostgreSQL client..."
-    yum install -y postgresql15
-fi
-
-# Run migration
-export PGPASSWORD='$DbPassword'
-psql -h $RdsEndpoint -p $Port -U $DbUsername -d $DatabaseName -f /tmp/migration.sql
-
-# Cleanup
-rm -f /tmp/migration.sql
-unset PGPASSWORD
-
-echo "Migration completed successfully"
-"@
+# Create SSM command as array of lines
+$CommandLines = @(
+    "#!/bin/bash",
+    "set -e",
+    "",
+    "# Decode SQL",
+    "echo '$EncodedSQL' | base64 -d > /tmp/migration.sql",
+    "",
+    "# Install psql if not present",
+    "if ! command -v psql &> /dev/null; then",
+    "    echo 'Installing PostgreSQL client...'",
+    "    yum install -y postgresql15",
+    "fi",
+    "",
+    "# Run migration",
+    "export PGPASSWORD='$DbPassword'",
+    "psql -h $RdsEndpoint -p $Port -U $DbUsername -d $DatabaseName -f /tmp/migration.sql",
+    "",
+    "# Cleanup",
+    "rm -f /tmp/migration.sql",
+    "unset PGPASSWORD",
+    "",
+    "echo 'Migration completed successfully'"
+)
 
 Write-Host "📝 Migration approach:" -ForegroundColor Cyan
 Write-Host "   Using AWS Systems Manager Run Command" -ForegroundColor White
@@ -171,11 +181,14 @@ Write-Host ""
 # Execute via SSM
 Write-Host "📤 Sending command to instance..." -ForegroundColor Cyan
 try {
+    # Convert command lines to JSON array
+    $CommandJson = $CommandLines | ConvertTo-Json -Compress
+    
     $commandId = aws ssm send-command `
         --region $Region `
         --instance-ids $instances `
         --document-name "AWS-RunShellScript" `
-        --parameters "commands=[$CommandScript]" `
+        --parameters "commands=$CommandJson" `
         --query "Command.CommandId" `
         --output text 2>&1
     

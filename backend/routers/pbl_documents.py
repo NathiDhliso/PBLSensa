@@ -30,6 +30,7 @@ from services.pbl import (
     get_visualization_service,
     get_concept_deduplicator
 )
+from services.layer0.layer0_orchestrator import get_layer0_orchestrator
 
 router = APIRouter(prefix="/api/pbl", tags=["PBL"])
 
@@ -39,6 +40,7 @@ concept_service = get_concept_service()
 relationship_service = get_relationship_service()
 visualization_service = get_visualization_service()
 deduplicator = get_concept_deduplicator()
+layer0_orchestrator = get_layer0_orchestrator()
 
 
 # ============================================================================
@@ -48,13 +50,26 @@ deduplicator = get_concept_deduplicator()
 @router.post("/documents/upload")
 async def upload_document(
     file: UploadFile = File(...),
-    user_id: str = Query(..., description="User ID")
+    user_id: str = Query(..., description="User ID"),
+    force_reprocess: bool = Query(False, description="Force reprocessing even if cached")
 ):
     """
-    Upload and process a PDF document.
+    Upload and process a PDF document through Layer 0 optimization.
     
-    Starts the PBL pipeline to extract concepts, detect relationships,
-    and generate visualization.
+    Layer 0 provides:
+    - PDF hash computation for duplicate detection
+    - Cache lookup for instant results
+    - Document type detection (digital/scanned/hybrid)
+    - Cost estimation and tracking
+    - Integration with PBL pipeline
+    
+    Args:
+        file: PDF file to upload
+        user_id: User ID
+        force_reprocess: Skip cache lookup and reprocess document
+    
+    Returns:
+        Processing results with cache status, timing, and cost information
     """
     # Validate file type
     if not file.filename.endswith('.pdf'):
@@ -88,12 +103,12 @@ async def upload_document(
                     )
                 temp_file.write(chunk)
         
-        # Start pipeline processing (async in background)
-        # For now, we'll process synchronously
-        result = await pipeline.process_document(
+        # Process through Layer 0 orchestrator
+        result = await layer0_orchestrator.process_pdf(
             pdf_path=temp_path,
             document_id=UUID(document_id),
-            user_id=UUID(user_id) if user_id else None
+            user_id=UUID(user_id) if user_id else None,
+            force_reprocess=force_reprocess
         )
         
         # Clean up temp file
@@ -102,8 +117,15 @@ async def upload_document(
         return {
             "task_id": task_id,
             "document_id": document_id,
-            "status": "completed" if result['success'] else "failed",
-            "message": "Document uploaded and processing started"
+            "status": "completed" if result.success else "failed",
+            "cached": result.cached,
+            "processing_time_ms": result.processing_time_ms,
+            "cost_usd": result.cost_usd,
+            "document_type": result.document_type.classification if result.document_type else None,
+            "pdf_hash": result.pdf_hash,
+            "data": result.data,
+            "error": result.error,
+            "message": "Returned from cache" if result.cached else "Document processed successfully"
         }
         
     except Exception as e:
@@ -725,4 +747,120 @@ async def export_visualization(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to export visualization: {str(e)}"
+        )
+
+
+# ============================================================================
+# Layer 0 Admin Endpoints
+# ============================================================================
+
+@router.get("/admin/layer0/stats")
+async def get_layer0_stats():
+    """
+    Get comprehensive Layer 0 statistics.
+    
+    Returns cache statistics, cost breakdown, and health metrics.
+    Admin only endpoint.
+    """
+    try:
+        stats = layer0_orchestrator.get_stats()
+        
+        return {
+            "cache_stats": stats.get('cache', {}),
+            "cost_stats": stats.get('cost', {}),
+            "cost_breakdown_7d": stats.get('cost_breakdown', {}),
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get Layer 0 stats: {str(e)}"
+        )
+
+
+@router.post("/admin/layer0/cache/clear")
+async def clear_cache(
+    pdf_hash: Optional[str] = Query(None, description="Specific PDF hash to clear"),
+    clear_expired: bool = Query(False, description="Clear only expired entries")
+):
+    """
+    Clear cache entries.
+    
+    Can clear specific hash, expired entries, or all cache.
+    Admin only endpoint.
+    """
+    try:
+        cache_service = layer0_orchestrator.cache_service
+        
+        if pdf_hash:
+            # Clear specific hash
+            success = cache_service.invalidate_cache(pdf_hash)
+            return {
+                "message": f"Cache cleared for hash: {pdf_hash[:16]}...",
+                "cleared": 1 if success else 0
+            }
+        elif clear_expired:
+            # Clear expired entries
+            cleared = cache_service.cleanup_expired()
+            return {
+                "message": f"Cleared {cleared} expired cache entries",
+                "cleared": cleared
+            }
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Must specify pdf_hash or clear_expired=true"
+            )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to clear cache: {str(e)}"
+        )
+
+
+@router.get("/admin/layer0/costs")
+async def get_cost_report(
+    days: int = Query(30, description="Number of days to analyze", ge=1, le=365)
+):
+    """
+    Get detailed cost report.
+    
+    Returns cost breakdown, savings, and trends over specified period.
+    Admin only endpoint.
+    """
+    try:
+        cost_optimizer = layer0_orchestrator.cost_optimizer
+        
+        # Get cost breakdown
+        breakdown = cost_optimizer.get_cost_breakdown(days=min(days, 30))
+        
+        # Get savings calculation
+        savings = cost_optimizer.calculate_savings(period_days=days)
+        
+        # Get overall stats
+        stats = cost_optimizer.get_cost_stats()
+        
+        return {
+            "period_days": days,
+            "cost_breakdown": breakdown,
+            "savings": {
+                "total_cost": savings.total_cost,
+                "cost_saved": savings.cost_saved,
+                "savings_percentage": savings.savings_percentage,
+                "cache_hits": savings.cache_hits,
+                "cache_misses": savings.cache_misses,
+                "hit_rate": savings.hit_rate
+            },
+            "overall_stats": stats,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get cost report: {str(e)}"
         )

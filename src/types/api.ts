@@ -342,8 +342,24 @@ export interface UploadDocumentRequest {
 export interface UploadDocumentResponse {
   /** Task ID for tracking processing status */
   task_id: string;
+  /** Document ID */
+  document_id: string;
+  /** Processing status */
+  status: 'processing' | 'completed' | 'failed';
   /** Whether this was a cache hit */
-  cache_hit: boolean;
+  cached?: boolean;
+  /** Processing time in milliseconds */
+  processing_time_ms?: number;
+  /** Processing cost in USD */
+  cost_usd?: number;
+  /** Document type (digital/scanned/hybrid) */
+  document_type?: string;
+  /** PDF hash */
+  pdf_hash?: string;
+  /** Processing data */
+  data?: any;
+  /** Error message if failed */
+  error?: string;
   /** Message about the upload */
   message: string;
 }

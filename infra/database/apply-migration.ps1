@@ -11,7 +11,8 @@ param(
     [string]$Environment = "development",
     [string]$DeveloperId = "dev",
     [string]$Region = "eu-west-1",
-    [switch]$Rollback = $false
+    [switch]$Rollback = $false,
+    [string]$MigrationFile = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -26,12 +27,21 @@ $RdsEndpoint = "pbl-development-dev-db.cn82qs0k811m.eu-west-1.rds.amazonaws.com"
 $DatabaseName = "pbl_development"
 $Port = 5432
 
-if ($Rollback) {
-    $MigrationFile = "migrations/20250122_0006_ai_analogy_generation_rollback.sql"
-    Write-Host "⚠️  ROLLBACK MODE - This will remove the AI analogy tables!" -ForegroundColor Yellow
+if ([string]::IsNullOrWhiteSpace($MigrationFile)) {
+    if ($Rollback) {
+        $MigrationFile = "migrations/20250122_0006_ai_analogy_generation_rollback.sql"
+        Write-Host "⚠️  ROLLBACK MODE - This will remove the AI analogy tables!" -ForegroundColor Yellow
+    } else {
+        $MigrationFile = "migrations/20250122_0006_ai_analogy_generation.sql"
+        Write-Host "✅ MIGRATION MODE - This will create AI analogy tables" -ForegroundColor Green
+    }
 } else {
-    $MigrationFile = "migrations/20250122_0006_ai_analogy_generation.sql"
-    Write-Host "✅ MIGRATION MODE - This will create AI analogy tables" -ForegroundColor Green
+    # Check if it's a rollback file
+    if ($MigrationFile -like "*rollback*") {
+        Write-Host "⚠️  ROLLBACK MODE - This will revert database changes!" -ForegroundColor Yellow
+    } else {
+        Write-Host "✅ MIGRATION MODE - This will apply database changes" -ForegroundColor Green
+    }
 }
 
 Write-Host ""
