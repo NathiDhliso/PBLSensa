@@ -3,6 +3,7 @@ import { Check, X, Edit2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { AudioNarration } from '../audio/AudioNarration';
 import { useAudioCoordination } from '@/contexts/AudioCoordinationContext';
+import { ConfidenceIndicator } from './ConfidenceIndicator';
 import type { Concept } from '@/types/pbl';
 
 interface ConceptCardProps {
@@ -97,6 +98,33 @@ export const ConceptCard: React.FC<ConceptCardProps> = ({
               <div className="text-sm text-gray-500 mb-3">
                 Page {concept.page_number} • Importance: {(concept.importance_score * 100).toFixed(0)}%
               </div>
+              
+              {/* V7 Confidence Indicator */}
+              {concept.confidence !== undefined && (
+                <div className="mb-3">
+                  <ConfidenceIndicator
+                    confidence={concept.confidence}
+                    methodsFound={concept.methods_found}
+                    size="small"
+                  />
+                  {concept.extraction_methods && concept.extraction_methods.length > 0 && (
+                    <div className="flex gap-1 mt-1">
+                      {concept.extraction_methods.map((method) => (
+                        <span
+                          key={method}
+                          className="text-xs px-2 py-0.5 rounded"
+                          style={{
+                            backgroundColor: method === 'keybert' ? '#e9d5ff' : method === 'yake' ? '#dbeafe' : '#f3f4f6',
+                            color: method === 'keybert' ? '#7c3aed' : method === 'yake' ? '#2563eb' : '#6b7280'
+                          }}
+                        >
+                          {method}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               
               {/* Audio Narration */}
               {enableAudio && !isEditing && (

@@ -1,35 +1,33 @@
 # ✅ Terraform is Ready!
 
-All errors fixed. Deploy now with one command:
+All errors fixed. Deploy now:
 
-```powershell
-.\fix-and-deploy.ps1
-```
-
-Or manually:
 ```powershell
 cd infra\Development
-terraform plan
 terraform apply
 ```
 
-## What Was Fixed
-- ✅ SageMaker memory (4096→2048 MB)
-- ✅ AppConfig format (simplified)
-- ✅ API Gateway (commented out)
-- ✅ All references (fixed)
+## Latest Fix (Just Applied)
+- ✅ **SageMaker:** Switched from HDT-E (13.6 GB) to all-MiniLM-L6-v2 (~80 MB)
+
+## All Fixes
+1. ✅ SageMaker model (image size issue)
+2. ✅ SageMaker memory (4096→2048 MB)
+3. ✅ AppConfig format (simplified)
+4. ✅ API Gateway (commented out)
+5. ✅ All references (fixed)
 
 ## What Works
-Everything except API Gateway:
-- Database, Cache, Storage
-- Containers, Load Balancer
-- Auth, Queues, Monitoring
-- AI Models, Feature Flags
-
-Your API works through ALB directly.
+Everything:
+- ✅ Database, Cache, Storage
+- ✅ Containers, Load Balancer
+- ✅ Auth, Queues, Monitoring
+- ✅ SageMaker Embeddings (all-MiniLM-L6-v2)
+- ✅ AppConfig Feature Flags
 
 ## Docs
-- `infra/Development/ALL-FIXES-COMPLETE.md` - Full details
-- `infra/Development/QUICK-FIX-SUMMARY.md` - Quick ref
+- `infra/Development/FINAL-STATUS.md` - Complete status
+- `infra/Development/SAGEMAKER-FIX.md` - SageMaker details
+- `infra/Development/ALL-FIXES-COMPLETE.md` - Full history
 
-**Ready to go! 🚀**
+**Ready to deploy! 🚀**

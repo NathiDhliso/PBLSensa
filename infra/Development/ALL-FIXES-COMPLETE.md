@@ -14,6 +14,9 @@ All errors have been fixed. Your Terraform configuration is now ready to deploy 
 3. ✅ **API Gateway VPC Link** - Commented out (needs NLB)
 4. ✅ **API Gateway Deployment** - Commented out (needs methods)
 
+### Round 3: SageMaker Image Size (1 issue)
+10. ✅ **SageMaker Model Too Large** - Switched from HDT-E (13.6 GB) to all-MiniLM-L6-v2 (~80 MB)
+
 ### Round 2: Reference Errors (5 issues)
 5. ✅ **main.tf output** - Commented out `api_gateway_url`
 6. ✅ **outputs.tf stage name** - Commented out `api_gateway_stage_name`
@@ -256,5 +259,10 @@ When you're ready to add API Gateway back:
 **Status:** ✅ Ready to deploy
 **Last Updated:** 2025-10-24
 **Version:** 7.0 (Development)
+
+## Latest Fix (SageMaker)
+- **Issue:** HDT-E model image too large (13.6 GB > 10 GB limit)
+- **Solution:** Switched to all-MiniLM-L6-v2 (~80 MB)
+- **Details:** See `SAGEMAKER-FIX.md`
 
 🎉 **You're all set! Run the deployment script now.**

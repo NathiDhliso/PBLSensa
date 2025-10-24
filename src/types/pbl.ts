@@ -21,6 +21,11 @@ export interface Concept {
   importance_score: number;
   validated: boolean;
   created_at: string;
+  // V7.0 fields
+  confidence?: number;
+  methods_found?: number;
+  extraction_methods?: string[];
+  structure_id?: string;
 }
 
 export interface ConceptValidation {
@@ -54,6 +59,10 @@ export interface Relationship {
   strength: number;
   validated_by_user: boolean;
   created_at: string;
+  // V7.0 fields
+  similarity_score?: number;
+  claude_confidence?: number;
+  explanation?: string;
 }
 
 export interface RelationshipCreate {

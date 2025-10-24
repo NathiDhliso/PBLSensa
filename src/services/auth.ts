@@ -21,6 +21,8 @@ import {
   signOut as amplifySignOut,
   getCurrentUser as amplifyGetCurrentUser,
   fetchAuthSession,
+  fetchUserAttributes,
+  updateUserAttributes,
   resetPassword,
   confirmResetPassword,
   type SignUpOutput,
@@ -177,10 +179,15 @@ export const authService = {
     password: string,
     attributes?: Omit<UserAttributes, 'email'>
   ): Promise<SignUpOutput> {
-    console.log('[Auth Service] Starting signup process...');
-    console.log('[Auth Service] Email:', email);
-    console.log('[Auth Service] Attributes received:', attributes);
-    console.log('[Auth Service] Sending only email to Cognito (name ignored)');
+    const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+    console.log(
+      `%c📝 SIGNUP STARTED %c${timestamp}`,
+      'color: #FF9800; font-weight: bold',
+      'color: #999; font-size: 0.9em'
+    );
+    console.log(`   📧 Email: %c${email}`, 'color: #2196F3');
+    console.log(`   👤 Name: %c${attributes?.name || 'not provided'}`, attributes?.name ? 'color: #4CAF50' : 'color: #999');
+    console.log(`   ℹ️  Note: Only email sent to Cognito (name stored separately)`);
     
     try {
       // Only send email during signup to avoid "unauthorized attribute" errors
@@ -197,22 +204,25 @@ export const authService = {
         },
       };
       
-      console.log('[Auth Service] SignUp params:', JSON.stringify(signUpParams, null, 2));
-      
       const result = await amplifySignUp(signUpParams);
       
-      console.log('[Auth Service] ✅ Signup successful!');
-      console.log('[Auth Service] Result:', result);
-      console.log('[Auth Service] User confirmed:', result.isSignUpComplete);
-      console.log('[Auth Service] Next step:', result.nextStep);
+      console.log(
+        `%c✅ SIGNUP SUCCESS %c${new Date().toISOString().split('T')[1].split('.')[0]}`,
+        'color: #4CAF50; font-weight: bold',
+        'color: #999; font-size: 0.9em'
+      );
+      console.log(`   🎯 User Confirmed: %c${result.isSignUpComplete}`, result.isSignUpComplete ? 'color: #4CAF50' : 'color: #ff9800');
+      console.log(`   ➡️  Next Step: %c${result.nextStep.signUpStep}`, 'color: #2196F3');
 
       return result;
     } catch (error: any) {
-      console.error('[Auth Service] ❌ Signup failed!');
-      console.error('[Auth Service] Error code:', error.code);
-      console.error('[Auth Service] Error name:', error.name);
-      console.error('[Auth Service] Error message:', error.message);
-      console.error('[Auth Service] Full error:', error);
+      console.error(
+        `%c❌ SIGNUP FAILED %c${new Date().toISOString().split('T')[1].split('.')[0]}`,
+        'color: #f44336; font-weight: bold',
+        'color: #999; font-size: 0.9em'
+      );
+      console.error(`   🔴 Error Code: %c${error.code || 'unknown'}`, 'color: #ff9800');
+      console.error(`   💬 Message: %c${error.message}`, 'color: #f44336');
       throw new Error(error.message || 'Failed to sign up');
     }
   },
@@ -317,14 +327,44 @@ export const authService = {
   async getCurrentUser(): Promise<CognitoUser | null> {
     try {
       const user = await amplifyGetCurrentUser();
+      const attributes = await fetchUserAttributes();
+      
+      const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+      console.log(
+        `%c👤 USER SESSION %c${timestamp}`,
+        'color: #9C27B0; font-weight: bold',
+        'color: #999; font-size: 0.9em'
+      );
+      console.log(
+        `   🆔 User ID: %c${user.userId}`,
+        'color: #2196F3'
+      );
+      console.log(
+        `   📧 Email: %c${attributes.email || 'not set'}`,
+        attributes.email ? 'color: #4CAF50' : 'color: #ff9800'
+      );
+      console.log(
+        `   👤 Name: %c${attributes.name || 'not set'}`,
+        attributes.name ? 'color: #4CAF50' : 'color: #ff9800'
+      );
+      console.log(
+        `   ✅ Email Verified: %c${attributes.email_verified || 'false'}`,
+        attributes.email_verified === 'true' ? 'color: #4CAF50' : 'color: #ff9800'
+      );
       
       return {
         userId: user.userId,
-        username: user.username,
-        email: user.signInDetails?.loginId,
+        username: attributes.name || attributes.email || user.username,
+        email: attributes.email || user.signInDetails?.loginId,
+        attributes: attributes as Record<string, string>,
       };
     } catch (error) {
       // User not authenticated
+      console.log(
+        `%c🚫 NO USER SESSION %c${new Date().toISOString().split('T')[1].split('.')[0]}`,
+        'color: #999; font-style: italic',
+        'color: #999; font-size: 0.9em'
+      );
       clearTokens();
       return null;
     }
@@ -424,6 +464,23 @@ export const authService = {
    */
   needsRefresh(): boolean {
     return isTokenExpired();
+  },
+
+  /**
+   * Update user attributes
+   * 
+   * @param attributes - User attributes to update
+   * @returns Promise that resolves when attributes are updated
+   * 
+   * @example
+   * await authService.updateUserAttributes({ name: 'John Doe' });
+   */
+  async updateUserAttributes(attributes: Record<string, string>): Promise<void> {
+    try {
+      await updateUserAttributes({ userAttributes: attributes });
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to update user attributes');
+    }
   },
 };
 

@@ -63,13 +63,19 @@ export const pblService = {
    * @param courseId - ID of the course to upload to
    * @param file - PDF file to upload
    * @param sha256Hash - Optional pre-computed SHA256 hash
+   * @param onProgress - Optional callback for upload progress (0-100)
    * @returns Promise with task ID for tracking processing status
    * 
    * @example
    * const { task_id } = await pblService.uploadDocument('course-123', pdfFile, hash);
    * // Poll status with task_id
    */
-  async uploadDocument(courseId: string, file: File, sha256Hash?: string): Promise<UploadDocumentResponse> {
+  async uploadDocument(
+    courseId: string, 
+    file: File, 
+    sha256Hash?: string,
+    onProgress?: (progress: number) => void
+  ): Promise<UploadDocumentResponse> {
     try {
       // Validate inputs
       if (!courseId) {
@@ -96,6 +102,12 @@ export const pblService = {
             'Content-Type': 'multipart/form-data',
           },
           timeout: 300000, // 5 minutes for large PDF processing
+          onUploadProgress: (progressEvent) => {
+            if (onProgress && progressEvent.total) {
+              const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+              onProgress(percentCompleted);
+            }
+          },
         }
       );
 

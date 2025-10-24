@@ -77,17 +77,17 @@ output "cognito_user_pool_domain" {
 # SageMaker
 output "sagemaker_endpoint_name" {
   description = "SageMaker endpoint name for embeddings"
-  value       = aws_sagemaker_endpoint.hdt_e.name
+  value       = aws_sagemaker_endpoint.embeddings.name
 }
 
 output "sagemaker_endpoint_arn" {
   description = "SageMaker endpoint ARN"
-  value       = aws_sagemaker_endpoint.hdt_e.arn
+  value       = aws_sagemaker_endpoint.embeddings.arn
 }
 
 output "sagemaker_model_name" {
   description = "SageMaker model name"
-  value       = aws_sagemaker_model.hdt_e.name
+  value       = aws_sagemaker_model.embeddings.name
 }
 
 # Lambda Functions
@@ -198,6 +198,6 @@ output "deployment_summary" {
     cognito_pool_id     = aws_cognito_user_pool.main.id
     s3_upload_bucket    = aws_s3_bucket.pdf_uploads.id
     sqs_queue_url       = aws_sqs_queue.documents.url
-    sagemaker_endpoint  = aws_sagemaker_endpoint.hdt_e.name
+    sagemaker_endpoint  = aws_sagemaker_endpoint.embeddings.name
   }
 }

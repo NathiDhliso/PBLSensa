@@ -5,7 +5,7 @@
 
 -- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pgvector";
+-- CREATE EXTENSION IF NOT EXISTS "pgvector";  -- Commented out - not available in RDS yet
 CREATE EXTENSION IF NOT EXISTS "pg_stat_statements";
 
 -- ============================================================================
@@ -110,7 +110,7 @@ CREATE TABLE IF NOT EXISTS document_chunks (
     token_count INTEGER,
     
     -- Vector embedding (1536 dimensions for most models, adjust as needed)
-    embedding vector(768),  -- HDT-E uses 768 dimensions
+    -- embedding vector(768),  -- HDT-E uses 768 dimensions -- COMMENTED: pgvector not available
     
     -- Metadata
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -142,7 +142,7 @@ CREATE TABLE IF NOT EXISTS keywords (
     context_snippet TEXT,
     
     -- Vector embedding
-    embedding vector(768),
+    -- embedding vector(768),  -- COMMENTED: pgvector not available
     
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     
@@ -310,6 +310,8 @@ CREATE TRIGGER update_annotations_updated_at BEFORE UPDATE ON user_annotations
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Function for semantic search
+-- COMMENTED: pgvector not available
+/*
 CREATE OR REPLACE FUNCTION search_similar_chunks(
     query_embedding vector(768),
     match_threshold float DEFAULT 0.7,
@@ -344,7 +346,11 @@ BEGIN
 END;
 $$;
 
+*/
+
 -- Function for finding similar keywords (for homograph detection)
+-- COMMENTED: pgvector not available
+/*
 CREATE OR REPLACE FUNCTION find_similar_keywords(
     query_embedding vector(768),
     similarity_threshold float DEFAULT 0.95,

@@ -19,24 +19,26 @@ Write-Host "=====================================" -ForegroundColor Cyan
 Write-Host ""
 
 # List of migrations in order
+# Note: Base schema should already be applied
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $migrations = @(
     @{
-        File = "infra/database/migrations/20250122_0006_ai_analogy_generation.sql"
+        File = Join-Path $scriptDir "migrations/20250122_0006_ai_analogy_generation.sql"
         Name = "AI Analogy Generation"
         Description = "Creates tables for AI-powered analogies, memory techniques, and learning mantras"
     },
     @{
-        File = "infra/database/migrations/20250123_0001_two_view_integration.sql"
+        File = Join-Path $scriptDir "migrations/20250123_0001_two_view_integration.sql"
         Name = "Two-View Integration (Sensa Learn)"
         Description = "Creates tables for Sensa Learn portal with user profiles and questions"
     },
     @{
-        File = "infra/database/migrations/20250124_0001_pbl_view_tables.sql"
+        File = Join-Path $scriptDir "migrations/20250124_0001_pbl_view_tables.sql"
         Name = "PBL View Tables"
         Description = "Creates tables for Problem-Based Learning portal with concepts and relationships"
     },
     @{
-        File = "infra/database/migrations/20250124_0002_layer0_tables.sql"
+        File = Join-Path $scriptDir "migrations/20250124_0002_layer0_tables.sql"
         Name = "Layer 0 Optimization"
         Description = "Creates tables for PDF caching, cost tracking, and performance monitoring"
     }
@@ -72,8 +74,9 @@ foreach ($migration in $migrations) {
     Write-Host ""
     
     try {
-        # Run migration
-        & ".\infra\database\apply-migration-ssm.ps1" `
+        # Run migration (use correct path relative to script location)
+        $scriptPath = Join-Path $PSScriptRoot "apply-migration-ssm.ps1"
+        & $scriptPath `
             -MigrationFile $migration.File `
             -Environment $Environment `
             -DeveloperId $DeveloperId `

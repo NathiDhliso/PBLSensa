@@ -22,6 +22,7 @@ export const UploadDocumentModal: React.FC<UploadDocumentModalProps> = ({
   const [error, setError] = useState<string>('');
   const [isHashing, setIsHashing] = useState(false);
   const [hashProgress, setHashProgress] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const uploadMutation = useUploadDocument();
 
@@ -55,11 +56,14 @@ export const UploadDocumentModal: React.FC<UploadDocumentModalProps> = ({
 
       setIsHashing(false);
 
-      // Upload document
+      // Upload document with progress tracking
       const result = await uploadMutation.mutateAsync({
         courseId,
         file: selectedFile,
         sha256Hash,
+        onProgress: (progress) => {
+          setUploadProgress(progress);
+        },
       });
 
       // Show appropriate toast based on cache status
@@ -181,12 +185,12 @@ export const UploadDocumentModal: React.FC<UploadDocumentModalProps> = ({
               <div>
                 <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
                   <span>Uploading...</span>
-                  <span>0%</span>
+                  <span>{uploadProgress}%</span>
                 </div>
                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                   <div
                     className="bg-purple-600 h-2 rounded-full transition-all duration-300"
-                    style={{ width: '0%' }}
+                    style={{ width: `${uploadProgress}%` }}
                   />
                 </div>
               </div>

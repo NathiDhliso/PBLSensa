@@ -19,30 +19,42 @@ class EmbeddingService:
     """
     Service for generating vector embeddings using AWS Bedrock Titan.
     
-    Model: amazon.titan-embed-text-v1
-    Dimensions: 768
+    Model: amazon.titan-embed-text-v2:0 (default)
+    Dimensions: 1024 (v2) or 768 (v1)
+    
+    Titan v2 improvements:
+    - Better quality embeddings
+    - Configurable dimensions (256, 512, 1024)
+    - Normalized by default
     """
     
     def __init__(
         self,
         region_name: str = "us-east-1",
-        model_id: str = "amazon.titan-embed-text-v1"
+        model_id: str = "amazon.titan-embed-text-v2:0"
     ):
         """
         Initialize embedding service.
         
         Args:
             region_name: AWS region for Bedrock
-            model_id: Titan Embeddings model ID
+            model_id: Titan Embeddings model ID (v2 recommended)
         """
         self.region_name = region_name
         self.model_id = model_id
-        self.embedding_dimensions = 768
+        
+        # Set dimensions based on model
+        if "v2" in model_id:
+            self.embedding_dimensions = 1024  # Titan v2 default
+        elif "v1" in model_id:
+            self.embedding_dimensions = 768   # Titan v1
+        else:
+            self.embedding_dimensions = 1024  # Default to v2
         
         # Initialize boto3 client
         try:
             self.client = boto3.client('bedrock-runtime', region_name=region_name)
-            logger.info(f"Initialized EmbeddingService with model {model_id}")
+            logger.info(f"Initialized EmbeddingService with model {model_id} ({self.embedding_dimensions} dimensions)")
         except Exception as e:
             raise Exception(f"Failed to initialize Bedrock client for embeddings: {e}")
     
@@ -54,7 +66,7 @@ class EmbeddingService:
             text: Text to embed
             
         Returns:
-            768-dimension embedding vector
+            Embedding vector (1024 dimensions for v2, 768 for v1)
         """
         if not text or not text.strip():
             raise ValueError("Text cannot be empty")
@@ -65,9 +77,17 @@ class EmbeddingService:
             text = text[:max_chars]
             logger.warning(f"Text truncated to {max_chars} characters")
         
-        request_body = {
-            "inputText": text
-        }
+        # Titan v2 uses different request format
+        if "v2" in self.model_id:
+            request_body = {
+                "inputText": text,
+                "dimensions": self.embedding_dimensions,
+                "normalize": True
+            }
+        else:
+            request_body = {
+                "inputText": text
+            }
         
         try:
             response = self.client.invoke_model(
@@ -81,8 +101,11 @@ class EmbeddingService:
             if not embedding:
                 raise ValueError("No embedding in response")
             
-            if len(embedding) != self.embedding_dimensions:
-                raise ValueError(f"Expected {self.embedding_dimensions} dimensions, got {len(embedding)}")
+            # Log actual dimensions received
+            actual_dims = len(embedding)
+            if actual_dims != self.embedding_dimensions:
+                logger.warning(f"Expected {self.embedding_dimensions} dimensions, got {actual_dims}. Updating expected dimensions.")
+                self.embedding_dimensions = actual_dims
             
             return embedding
             

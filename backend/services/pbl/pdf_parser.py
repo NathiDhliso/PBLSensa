@@ -2,15 +2,30 @@
 PDF Parser Service
 
 Parses PDF documents and extracts text with position data for concept extraction.
+Includes v7.0 enhancements with multi-method parsing (LlamaParse, Textract, pdfplumber).
 """
 
+import os
 import pdfplumber
+import boto3
+import time
 from typing import List, Dict, Optional, Tuple
 from pathlib import Path
+from dataclasses import dataclass, field
 import logging
 from models.pbl_concept import TextChunk
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class V7ParseResult:
+    """Result from v7 parsing with metadata"""
+    text: str
+    markdown: Optional[str]
+    method_used: str  # 'llamaparse', 'textract', 'pdfplumber'
+    confidence: float
+    metadata: Dict = field(default_factory=dict)
 
 
 class PDFParser:
@@ -22,6 +37,12 @@ class PDFParser:
         self.chunk_size = 1000  # tokens
         self.chunk_overlap = 200  # tokens
         self.chars_per_token = 4  # Approximate characters per token
+        
+        # V7.0 enhancements
+        self._llama_parse_client = None  # Lazy init
+        self.textract_client = None  # Lazy init
+        self.s3_client = None  # Lazy init
+        self.s3_bucket = os.getenv('S3_TEMP_BUCKET', 'pbl-temp-uploads')
     
     def parse_pdf_with_positions(self, pdf_path: str) -> List[TextChunk]:
         """
@@ -295,3 +316,173 @@ def get_pdf_parser() -> PDFParser:
     if _pdf_parser_instance is None:
         _pdf_parser_instance = PDFParser()
     return _pdf_parser_instance
+
+    
+    # ==================== V7.0 ENHANCEMENTS ====================
+    
+    async def parse_with_v7(
+        self, 
+        pdf_path: str,
+        force_method: Optional[str] = None
+    ) -> V7ParseResult:
+        """
+        V7.0 multi-method parsing with fallback chain.
+        
+        Tries: LlamaParse → Textract → pdfplumber
+        
+        Args:
+            pdf_path: Path to PDF file
+            force_method: Optional method to force ('llamaparse', 'textract', 'pdfplumber')
+        
+        Returns:
+            V7ParseResult with text, method used, and confidence
+        """
+        logger.info(f"Starting v7 parsing for {pdf_path}")
+        
+        if force_method:
+            return await self._parse_with_method(pdf_path, force_method)
+        
+        # Try LlamaParse first (best for structure)
+        try:
+            logger.info("Attempting LlamaParse...")
+            result = await self._parse_with_llamaparse(pdf_path)
+            if result.confidence > 0.8:
+                logger.info("LlamaParse successful")
+                return result
+        except Exception as e:
+            logger.warning(f"LlamaParse failed: {e}")
+        
+        # Fallback to Textract (good for OCR)
+        try:
+            logger.info("Attempting Textract...")
+            result = await self._parse_with_textract(pdf_path)
+            if result.confidence > 0.6:
+                logger.info("Textract successful")
+                return result
+        except Exception as e:
+            logger.warning(f"Textract failed: {e}")
+        
+        # Last resort: pdfplumber (existing method)
+        logger.info("Using pdfplumber fallback")
+        return await self._parse_with_pdfplumber_v7(pdf_path)
+    
+    async def _parse_with_llamaparse(self, pdf_path: str) -> V7ParseResult:
+        """Parse with LlamaParse - best for structure preservation"""
+        if not self._llama_parse_client:
+            try:
+                from llama_parse import LlamaParse
+                api_key = os.getenv('LLAMA_CLOUD_API_KEY')
+                if not api_key:
+                    raise ValueError("LLAMA_CLOUD_API_KEY not set")
+                
+                self._llama_parse_client = LlamaParse(
+                    api_key=api_key,
+                    result_type="markdown"
+                )
+            except ImportError:
+                raise ImportError("llama-parse not installed. Run: pip install llama-parse")
+        
+        documents = self._llama_parse_client.load_data(pdf_path)
+        markdown_text = documents[0].text if documents else ""
+        
+        return V7ParseResult(
+            text=markdown_text,
+            markdown=markdown_text,
+            method_used='llamaparse',
+            confidence=0.95,
+            metadata={'source': 'llamaparse'}
+        )
+    
+    async def _parse_with_textract(self, pdf_path: str) -> V7ParseResult:
+        """Parse with AWS Textract - best for scanned documents"""
+        if not self.textract_client:
+            self.textract_client = boto3.client('textract')
+        if not self.s3_client:
+            self.s3_client = boto3.client('s3')
+        
+        # Upload to S3 temporarily
+        s3_key = f"temp/{os.path.basename(pdf_path)}"
+        self.s3_client.upload_file(pdf_path, self.s3_bucket, s3_key)
+        
+        try:
+            # Start Textract job
+            response = self.textract_client.start_document_analysis(
+                DocumentLocation={
+                    'S3Object': {
+                        'Bucket': self.s3_bucket,
+                        'Name': s3_key
+                    }
+                },
+                FeatureTypes=['TABLES', 'LAYOUT']
+            )
+            
+            # Wait for completion
+            job_id = response['JobId']
+            result = await self._wait_for_textract(job_id)
+            
+            # Extract text
+            text = self._extract_text_from_textract(result)
+            
+            return V7ParseResult(
+                text=text,
+                markdown=None,
+                method_used='textract',
+                confidence=0.85,
+                metadata={'textract_result': result}
+            )
+        
+        finally:
+            # Cleanup S3
+            self.s3_client.delete_object(Bucket=self.s3_bucket, Key=s3_key)
+    
+    async def _parse_with_pdfplumber_v7(self, pdf_path: str) -> V7ParseResult:
+        """Parse with pdfplumber - fallback (reuses existing method)"""
+        # Reuse existing parse_pdf_with_positions method
+        chunks = self.parse_pdf_with_positions(pdf_path)
+        text = '\n\n'.join([chunk.text for chunk in chunks])
+        
+        return V7ParseResult(
+            text=text,
+            markdown=None,
+            method_used='pdfplumber',
+            confidence=0.6,
+            metadata={'source': 'pdfplumber', 'chunks': len(chunks)}
+        )
+    
+    async def _wait_for_textract(self, job_id: str, max_wait: int = 300):
+        """Wait for Textract job to complete"""
+        start_time = time.time()
+        
+        while time.time() - start_time < max_wait:
+            response = self.textract_client.get_document_analysis(JobId=job_id)
+            status = response['JobStatus']
+            
+            if status == 'SUCCEEDED':
+                return response
+            elif status == 'FAILED':
+                raise Exception(f"Textract job failed: {response.get('StatusMessage')}")
+            
+            time.sleep(5)
+        
+        raise TimeoutError(f"Textract job {job_id} timed out after {max_wait}s")
+    
+    def _extract_text_from_textract(self, result: Dict) -> str:
+        """Extract plain text from Textract result"""
+        blocks = result.get('Blocks', [])
+        lines = [
+            block['Text']
+            for block in blocks
+            if block.get('BlockType') == 'LINE' and 'Text' in block
+        ]
+        return '\n'.join(lines)
+    
+    async def _parse_with_method(self, pdf_path: str, method: str) -> V7ParseResult:
+        """Force parsing with specific method"""
+        if method == 'llamaparse':
+            return await self._parse_with_llamaparse(pdf_path)
+        elif method == 'textract':
+            return await self._parse_with_textract(pdf_path)
+        elif method == 'pdfplumber':
+            return await self._parse_with_pdfplumber_v7(pdf_path)
+        else:
+            raise ValueError(f"Unknown method: {method}")

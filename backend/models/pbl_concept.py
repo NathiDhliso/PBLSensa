@@ -95,7 +95,7 @@ class Concept(ConceptBase):
     embedding: Optional[List[float]] = Field(None, description="Vector embedding for similarity search")
     validated: bool = Field(default=False, description="Whether user has validated this concept")
     merged_into: Optional[UUID] = Field(None, description="If duplicate, ID of primary concept")
-    created_at: datetime
+    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
     updated_at: Optional[datetime] = None
     
     class Config:

@@ -24,16 +24,32 @@ export function PBLDocumentPage() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState<WorkflowStep>('validation');
 
-  const { data: concepts } = usePBLConcepts(documentId!, false);
-  const { data: duplicates } = usePBLDuplicates(documentId!);
-  const { data: visualization } = usePBLVisualization(documentId!);
+  console.log('🔍 [PBL Document Page] Rendering with documentId:', documentId);
+
+  const { data: concepts, isLoading: conceptsLoading, error: conceptsError } = usePBLConcepts(documentId!, false);
+  const { data: duplicates, isLoading: duplicatesLoading, error: duplicatesError } = usePBLDuplicates(documentId!);
+  const { data: visualization, isLoading: visualizationLoading, error: visualizationError } = usePBLVisualization(documentId!);
+
+  console.log('📊 [PBL Document Page] Data Status:', {
+    concepts: { data: concepts, loading: conceptsLoading, error: conceptsError },
+    duplicates: { data: duplicates, loading: duplicatesLoading, error: duplicatesError },
+    visualization: { data: visualization, loading: visualizationLoading, error: visualizationError }
+  });
 
   if (!documentId) {
+    console.error('❌ [PBL Document Page] No document ID provided');
     return <div>Document ID required</div>;
   }
 
   const unvalidatedCount = concepts?.filter((c) => !c.validated).length || 0;
   const duplicateCount = duplicates?.duplicates?.length || 0;
+
+  console.log('📈 [PBL Document Page] Counts:', {
+    totalConcepts: concepts?.length || 0,
+    unvalidatedCount,
+    duplicateCount,
+    currentStep
+  });
 
   const handleValidationComplete = () => {
     if (duplicateCount > 0) {

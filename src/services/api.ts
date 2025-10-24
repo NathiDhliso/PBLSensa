@@ -85,17 +85,49 @@ apiClient.interceptors.request.use(
 
     // Log request in development mode
     if (isDevelopment && env.enableApiLogging) {
-      console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`, {
-        params: config.params,
-        data: config.data,
-      });
+      const method = config.method?.toUpperCase() || 'UNKNOWN';
+      const url = config.url || 'unknown';
+      const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+      
+      // Format data preview
+      let dataPreview = '';
+      if (config.data) {
+        if (config.data instanceof FormData) {
+          dataPreview = '📎 FormData';
+        } else if (typeof config.data === 'object') {
+          const keys = Object.keys(config.data);
+          dataPreview = keys.length > 0 ? `{ ${keys.join(', ')} }` : '{}';
+        } else {
+          dataPreview = String(config.data).substring(0, 50);
+        }
+      }
+      
+      console.log(
+        `%c🚀 ${method} %c${url} %c${timestamp}`,
+        'color: #4CAF50; font-weight: bold',
+        'color: #2196F3; font-weight: bold',
+        'color: #999; font-size: 0.9em',
+        config.params ? `\n   📋 Params: ${JSON.stringify(config.params)}` : '',
+        dataPreview ? `\n   📦 Data: ${dataPreview}` : ''
+      );
     }
 
     return config;
   },
   (error: AxiosError) => {
     if (isDevelopment && env.enableApiLogging) {
-      console.error('[API Request Error]', error);
+      const method = error.config?.method?.toUpperCase() || 'UNKNOWN';
+      const url = error.config?.url || 'unknown';
+      const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+      
+      console.error(
+        `%c❌ REQUEST ERROR %c${method} %c${url} %c${timestamp}`,
+        'color: #f44336; font-weight: bold',
+        'color: #ff9800; font-weight: bold',
+        'color: #666',
+        'color: #999; font-size: 0.9em',
+        `\n   ⚠️  ${error.message}`
+      );
     }
     return Promise.reject(error);
   }
@@ -108,10 +140,34 @@ apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
     // Log successful response in development mode
     if (isDevelopment && env.enableApiLogging) {
-      console.log(`[API Response] ${response.config.method?.toUpperCase()} ${response.config.url}`, {
-        status: response.status,
-        data: response.data,
-      });
+      const method = response.config.method?.toUpperCase() || 'UNKNOWN';
+      const url = response.config.url || 'unknown';
+      const status = response.status;
+      const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+      
+      // Format response data preview
+      let dataPreview = '';
+      if (response.data) {
+        if (Array.isArray(response.data)) {
+          dataPreview = `Array(${response.data.length})`;
+        } else if (typeof response.data === 'object') {
+          const keys = Object.keys(response.data);
+          dataPreview = keys.length > 3 
+            ? `{ ${keys.slice(0, 3).join(', ')}, ... }` 
+            : `{ ${keys.join(', ')} }`;
+        } else {
+          dataPreview = String(response.data).substring(0, 50);
+        }
+      }
+      
+      console.log(
+        `%c✅ ${status} %c${method} %c${url} %c${timestamp}`,
+        'color: #4CAF50; font-weight: bold',
+        'color: #2196F3; font-weight: bold',
+        'color: #666',
+        'color: #999; font-size: 0.9em',
+        dataPreview ? `\n   📦 Response: ${dataPreview}` : ''
+      );
     }
 
     return response;

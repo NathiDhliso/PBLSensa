@@ -197,16 +197,17 @@ Places Lived: {', '.join(user_profile.experiences.places_lived[:3]) or 'Not spec
 
 **Output Format (JSON):**
 {{
-  "questions": [
-    {{
-      "question_text": "specific question text",
-      "question_type": "experience_mapping|process_parallel|etc",
-      "reasoning": "why this question fits the student"
-    }}
-  ]
-}}
+**Return as XML:**
 
-Generate {max_questions} questions now:"""
+<questions>
+  <question>
+    <question_text>specific question text</question_text>
+    <question_type>experience_mapping|process_parallel|etc</question_type>
+    <reasoning>why this question fits the student</reasoning>
+  </question>
+</questions>
+
+Generate {max_questions} questions in XML format now:"""
         
         return prompt
     
@@ -214,25 +215,23 @@ Generate {max_questions} questions now:"""
         """Call Claude via Bedrock"""
         # Mock response for development
         # In production: self.bedrock_client.client.invoke_model(...)
-        return json.dumps({
-            "questions": [
-                {
-                    "question_text": "Think of a time you organized items into groups. How did you decide what belonged where?",
-                    "question_type": "experience_mapping",
-                    "reasoning": "Matches hierarchical structure and user's organizational experience"
-                },
-                {
-                    "question_text": "In your work, have you ever had to break a complex task into smaller parts? Describe your approach.",
-                    "question_type": "classification_memory",
-                    "reasoning": "Relates to user's professional background"
-                },
-                {
-                    "question_text": "What's something from your hobbies that has different types or categories? How are they different?",
-                    "question_type": "metaphorical_bridge",
-                    "reasoning": "Connects to user's interests"
-                }
-            ]
-        })
+        return """<questions>
+  <question>
+    <question_text>Think of a time you organized items into groups. How did you decide what belonged where?</question_text>
+    <question_type>experience_mapping</question_type>
+    <reasoning>Matches hierarchical structure and user's organizational experience</reasoning>
+  </question>
+  <question>
+    <question_text>In your work, have you ever had to break a complex task into smaller parts? Describe your approach.</question_text>
+    <question_type>classification_memory</question_type>
+    <reasoning>Relates to user's professional background</reasoning>
+  </question>
+  <question>
+    <question_text>What's something from your hobbies that has different types or categories? How are they different?</question_text>
+    <question_type>metaphorical_bridge</question_type>
+    <reasoning>Connects to user's interests</reasoning>
+  </question>
+</questions>"""
     
     def _parse_claude_questions(
         self,
@@ -240,21 +239,39 @@ Generate {max_questions} questions now:"""
         concept: Concept,
         user_profile: UserProfile
     ) -> List[Question]:
-        """Parse Claude's JSON response into Question objects"""
+        """Parse Claude's XML response into Question objects"""
         try:
-            data = json.loads(response)
-            questions = []
+            import xml.etree.ElementTree as ET
             
-            for i, q in enumerate(data.get('questions', [])):
-                question = Question(
-                    id=f"q-{concept.id}-{i}",
-                    concept_id=concept.id,
-                    user_id=user_profile.user_id,
-                    question_text=q.get('question_text', ''),
-                    question_type=q.get('question_type', QuestionType.GENERAL_ANALOGY),
-                    answered=False
-                )
-                questions.append(question)
+            # Extract XML from response
+            xml_start = response.find('<questions>')
+            xml_end = response.rfind('</questions>') + len('</questions>')
+            
+            if xml_start == -1 or xml_end < len('</questions>'):
+                print(f"No <questions> XML found in response")
+                return []
+            
+            xml_str = response[xml_start:xml_end]
+            root = ET.fromstring(xml_str)
+            
+            questions = []
+            for i, q_elem in enumerate(root.findall('question')):
+                question_text_elem = q_elem.find('question_text')
+                question_type_elem = q_elem.find('question_type')
+                
+                question_text = question_text_elem.text if question_text_elem is not None and question_text_elem.text else ''
+                question_type = question_type_elem.text if question_type_elem is not None and question_type_elem.text else 'general_analogy'
+                
+                if question_text:
+                    question = Question(
+                        id=f"q-{concept.id}-{i}",
+                        concept_id=concept.id,
+                        user_id=user_profile.user_id,
+                        question_text=question_text,
+                        question_type=question_type,
+                        answered=False
+                    )
+                    questions.append(question)
             
             return questions
             

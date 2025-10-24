@@ -1,0 +1,128 @@
+"""
+Flask Blueprint for PBL Document Routes
+Provides PBL-specific endpoints for the Flask backend
+"""
+
+from flask import Blueprint, jsonify, request
+from datetime import datetime
+import uuid
+
+pbl_bp = Blueprint('pbl', __name__, url_prefix='/api/pbl')
+
+# In-memory storage for PBL data
+pbl_documents_db = {}
+pbl_concepts_db = {}
+pbl_relationships_db = {}
+pbl_visualizations_db = {}
+pbl_duplicates_db = {}
+
+
+@pbl_bp.route('/documents/<document_id>/concepts', methods=['GET', 'OPTIONS'])
+def get_document_concepts(document_id):
+    """Get concepts for a document"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
+    # Return empty array - no mock data
+    return jsonify([])
+
+
+@pbl_bp.route('/documents/<document_id>/concepts/<concept_id>', methods=['PUT', 'OPTIONS'])
+def update_concept(document_id, concept_id):
+    """Update a concept"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
+    data = request.get_json()
+    
+    # Store the updated concept
+    key = f"{document_id}:{concept_id}"
+    pbl_concepts_db[key] = {
+        "id": concept_id,
+        "document_id": document_id,
+        **data,
+        "updated_at": datetime.now().isoformat()
+    }
+    
+    return jsonify(pbl_concepts_db[key])
+
+
+@pbl_bp.route('/documents/<document_id>/concepts/<concept_id>', methods=['DELETE', 'OPTIONS'])
+def delete_concept(document_id, concept_id):
+    """Delete a concept"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
+    key = f"{document_id}:{concept_id}"
+    if key in pbl_concepts_db:
+        del pbl_concepts_db[key]
+    
+    return jsonify({"message": "Concept deleted successfully"})
+
+
+@pbl_bp.route('/documents/<document_id>/duplicates', methods=['GET', 'OPTIONS'])
+def get_document_duplicates(document_id):
+    """Get duplicate concepts for a document"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
+    # Return empty array - no mock data
+    return jsonify([])
+
+
+@pbl_bp.route('/documents/<document_id>/duplicates/<group_id>/resolve', methods=['POST', 'OPTIONS'])
+def resolve_duplicate(document_id, group_id):
+    """Resolve a duplicate group"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
+    data = request.get_json()
+    kept_concept_id = data.get('kept_concept_id')
+    
+    return jsonify({
+        "message": "Duplicate resolved successfully",
+        "kept_concept_id": kept_concept_id
+    })
+
+
+@pbl_bp.route('/visualizations/<document_id>', methods=['GET', 'OPTIONS'])
+def get_visualization(document_id):
+    """Get visualization data for a document"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
+    # Return empty visualization - no mock data
+    return jsonify({
+        "id": f"viz-{document_id}",
+        "document_id": document_id,
+        "nodes": [],
+        "edges": [],
+        "created_at": datetime.now().isoformat()
+    })
+
+
+@pbl_bp.route('/documents', methods=['GET', 'OPTIONS'])
+def get_pbl_documents():
+    """Get all PBL documents"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
+    return jsonify(list(pbl_documents_db.values()))
+
+
+@pbl_bp.route('/documents/<document_id>', methods=['GET', 'OPTIONS'])
+def get_pbl_document(document_id):
+    """Get a specific PBL document"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
+    if document_id in pbl_documents_db:
+        return jsonify(pbl_documents_db[document_id])
+    
+    # Return 404 if not found
+    return jsonify({"error": "Document not found"}), 404
+
+
+def register_pbl_routes(app):
+    """Register PBL routes with Flask app"""
+    app.register_blueprint(pbl_bp)

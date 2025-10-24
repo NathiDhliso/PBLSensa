@@ -19,8 +19,8 @@ from models.pbl_concept import (
 from models.pbl_relationship import Relationship, RelationshipCreate
 from models.pbl_visualization import (
     PBLVisualization,
-    NodeUpdate,
-    EdgeCreate,
+    NodeUpdateRequest,
+    EdgeCreateRequest,
     LayoutChangeRequest
 )
 from services.pbl import (
@@ -169,7 +169,7 @@ async def get_processing_status(document_id: str):
 # Concept Management Endpoints
 # ============================================================================
 
-@router.get("/documents/{document_id}/concepts", response_model=List[ConceptResponse])
+@router.get("/documents/{document_id}/concepts", response_model=List[Concept])
 async def get_concepts(
     document_id: str,
     validated: Optional[bool] = Query(None, description="Filter by validation status"),

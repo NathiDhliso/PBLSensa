@@ -280,16 +280,17 @@ If related, specify:
 - **Direction**: A→B or B→A
 - **Strength**: 0.0 to 1.0 (how strong is this relationship?)
 
-**Return as JSON:**
-{{
-  "structure_category": "hierarchical|sequential|unclassified",
-  "relationship_type": "is_a|precedes|etc",
-  "direction": "A_to_B|B_to_A",
-  "strength": 0.8,
-  "reasoning": "Brief explanation"
-}}
+**Return as XML:**
 
-Generate the response now:"""
+<relationship>
+  <structure_category>hierarchical|sequential|unclassified</structure_category>
+  <relationship_type>is_a|precedes|etc</relationship_type>
+  <direction>A_to_B|B_to_A</direction>
+  <strength>0.8</strength>
+  <reasoning>Brief explanation</reasoning>
+</relationship>
+
+Generate the XML response now:"""
         
         return prompt
     
@@ -303,11 +304,58 @@ Generate the response now:"""
             raise
     
     def _parse_claude_response(self, response: str) -> Dict:
-        """Parse Claude's JSON response"""
+        """Parse Claude's XML response"""
+        try:
+            import xml.etree.ElementTree as ET
+            
+            # Extract XML from response
+            xml_start = response.find('<relationship>')
+            xml_end = response.rfind('</relationship>') + len('</relationship>')
+            
+            if xml_start == -1 or xml_end < len('</relationship>'):
+                # Fallback to JSON parsing for backward compatibility
+                return self._parse_claude_json_fallback(response)
+            
+            xml_str = response[xml_start:xml_end]
+            root = ET.fromstring(xml_str)
+            
+            # Extract fields
+            category_elem = root.find('structure_category')
+            rel_type_elem = root.find('relationship_type')
+            strength_elem = root.find('strength')
+            reasoning_elem = root.find('reasoning')
+            
+            category_str = category_elem.text if category_elem is not None and category_elem.text else 'unclassified'
+            category = StructureCategory(category_str)
+            
+            rel_type_str = rel_type_elem.text if rel_type_elem is not None and rel_type_elem.text else 'related_to'
+            try:
+                rel_type = RelationshipType(rel_type_str)
+            except ValueError:
+                rel_type = RelationshipType.RELATED_TO
+            
+            strength = float(strength_elem.text) if strength_elem is not None and strength_elem.text else 0.5
+            reasoning = reasoning_elem.text if reasoning_elem is not None and reasoning_elem.text else ''
+            
+            return {
+                'structure_category': category,
+                'relationship_type': rel_type,
+                'strength': strength,
+                'reasoning': reasoning
+            }
+        except Exception as e:
+            logger.error(f"Failed to parse Claude XML response: {e}")
+            return {
+                'structure_category': StructureCategory.UNCLASSIFIED,
+                'relationship_type': RelationshipType.RELATED_TO,
+                'strength': 0.5
+            }
+    
+    def _parse_claude_json_fallback(self, response: str) -> Dict:
+        """Fallback JSON parser for backward compatibility"""
         try:
             data = json.loads(response)
             
-            # Convert string to enum
             category_str = data.get('structure_category', 'unclassified')
             category = StructureCategory(category_str)
             
@@ -324,7 +372,7 @@ Generate the response now:"""
                 'reasoning': data.get('reasoning', '')
             }
         except Exception as e:
-            logger.error(f"Failed to parse Claude response: {e}")
+            logger.error(f"Failed to parse Claude JSON response: {e}")
             return {
                 'structure_category': StructureCategory.UNCLASSIFIED,
                 'relationship_type': RelationshipType.RELATED_TO,

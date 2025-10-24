@@ -52,6 +52,8 @@ class ConceptExtractor:
             # Step 2: Extract concepts from each chunk using Claude
             print(f"\n🤖 STEP 2: Extracting concepts with Claude...")
             all_concepts = []
+            import time
+            
             for i, chunk in enumerate(text_chunks):
                 print(f"  Processing chunk {i+1}/{len(text_chunks)} (page {chunk.page_number})...")
                 logger.debug(f"Processing chunk {i+1}/{len(text_chunks)}")
@@ -69,6 +71,10 @@ class ConceptExtractor:
                     )
                     all_concepts.append(concept)
                     print(f"      • {concept.term}")
+                
+                # Add delay between chunks to avoid rate limiting
+                if i < len(text_chunks) - 1:  # Don't delay after last chunk
+                    time.sleep(2.0)  # 2 second delay between chunks to avoid throttling
             
             print(f"\n✅ Total concepts extracted: {len(all_concepts)}")
             logger.info(f"Extracted {len(all_concepts)} concepts before deduplication")
@@ -142,7 +148,7 @@ class ConceptExtractor:
     
     def _build_extraction_prompt(self, text: str) -> str:
         """
-        Build prompt for Claude concept extraction.
+        Build prompt for Claude concept extraction using XML format.
         
         Args:
             text: Text to extract concepts from
@@ -163,108 +169,179 @@ Focus on:
 - Important processes, methodologies, or frameworks
 - Skip common words, general terms, and pronouns
 
-Text to analyze:
+<text_to_analyze>
 {text}
+</text_to_analyze>
 
-Return ONLY a JSON array in this exact format:
-[
-  {{
-    "term": "Virtual Machine",
-    "definition": "A software emulation of a physical computer system that runs an operating system and applications",
-    "source_sentences": ["A virtual machine (VM) is a software emulation of a physical computer."]
-  }}
-]
+Return your response using XML tags in this exact format:
+
+<concepts>
+  <concept>
+    <term>Virtual Machine</term>
+    <definition>A software emulation of a physical computer system that runs an operating system and applications</definition>
+    <source_sentences>
+      <sentence>A virtual machine (VM) is a software emulation of a physical computer.</sentence>
+    </source_sentences>
+  </concept>
+</concepts>
 
 Important:
-- Return valid JSON only, no additional text
+- Use proper XML formatting with opening and closing tags
 - Include 5-15 concepts per chunk
 - Definitions should be 1-2 sentences
 - Source sentences should be exact quotes from the text
+- Wrap all concepts in a <concepts> root element
 
-JSON array:"""
+Begin your XML response:"""
         
         return prompt
     
-    def _call_claude(self, prompt: str) -> str:
+    def _call_claude(self, prompt: str, max_retries: int = 8) -> str:
         """
-        Call Claude via Bedrock.
+        Call Claude via Bedrock with retry logic and exponential backoff.
         
         Args:
             prompt: Prompt to send to Claude
+            max_retries: Maximum number of retry attempts (increased to 8 for better throttle handling)
             
         Returns:
             Claude's response text
         """
-        try:
-            response = self.bedrock_client.invoke_claude(prompt, max_tokens=4000)
-            return response
-        except Exception as e:
-            logger.error(f"Claude API call failed: {e}")
-            raise
+        import time
+        from botocore.exceptions import ClientError
+        
+        for attempt in range(max_retries):
+            try:
+                response = self.bedrock_client.invoke_claude(prompt, max_tokens=4000)
+                return response
+            except ClientError as e:
+                error_code = e.response.get('Error', {}).get('Code', '')
+                
+                # Handle throttling with exponential backoff
+                if error_code == 'ThrottlingException' and attempt < max_retries - 1:
+                    # More aggressive backoff: 2, 4, 8, 16, 32, 64, 120, 120 seconds
+                    wait_time = min(2 ** (attempt + 1), 120)  # Max 2 minutes
+                    print(f"    ⚠️  Throttled by AWS. Retrying in {wait_time}s... (attempt {attempt + 1}/{max_retries})")
+                    logger.warning(f"Throttled by AWS. Waiting {wait_time}s before retry {attempt + 1}/{max_retries}")
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    logger.error(f"Claude API call failed: {e}")
+                    raise
+            except Exception as e:
+                logger.error(f"Claude API call failed: {e}")
+                raise
+        
+        raise Exception(f"Max retries ({max_retries}) exceeded for Claude API call")
     
     def _parse_claude_response(self, response: str) -> List[ConceptExtractionData]:
         """
-        Parse Claude's JSON response into ConceptExtractionData objects.
+        Parse Claude's XML response into ConceptExtractionData objects with fallback strategies.
         
         Args:
-            response: JSON string from Claude
+            response: XML string from Claude
             
         Returns:
             List of ConceptExtractionData objects
         """
+        import xml.etree.ElementTree as ET
+        import re
+        
+        # Strategy 1: Try strict XML parsing
         try:
-            # Try to extract JSON from response (Claude sometimes adds text before/after)
-            json_start = response.find('[')
-            json_end = response.rfind(']') + 1
+            # Try to extract XML from response (Claude sometimes adds text before/after)
+            xml_start = response.find('<concepts>')
+            xml_end = response.rfind('</concepts>') + len('</concepts>')
             
-            if json_start == -1 or json_end == 0:
-                print(f"    ⚠️  No JSON array found in response")
-                print(f"    Response preview: {response[:200]}...")
-                logger.error("Claude response is not a JSON array")
-                return []
-            
-            json_str = response[json_start:json_end]
-            
-            # Parse JSON
-            data = json.loads(json_str)
-            
-            if not isinstance(data, list):
-                print(f"    ⚠️  Response is not a list")
-                logger.error("Claude response is not a JSON array")
-                return []
-            
-            concepts = []
-            for item in data:
-                try:
-                    concept = ConceptExtractionData(
-                        term=item.get('term', '').strip(),
-                        definition=item.get('definition', '').strip(),
-                        source_sentences=item.get('source_sentences', [])
-                    )
-                    
-                    # Validate concept has required fields
-                    if concept.term and concept.definition:
-                        concepts.append(concept)
-                    else:
-                        print(f"    ⚠️  Skipping invalid concept: {item.get('term', 'unknown')}")
-                        logger.warning(f"Skipping invalid concept: {item}")
+            if xml_start != -1 and xml_end >= len('</concepts>'):
+                xml_str = response[xml_start:xml_end]
+                
+                # Parse XML
+                root = ET.fromstring(xml_str)
+                
+                concepts = []
+                for concept_elem in root.findall('concept'):
+                    try:
+                        term_elem = concept_elem.find('term')
+                        definition_elem = concept_elem.find('definition')
+                        source_sentences_elem = concept_elem.find('source_sentences')
                         
-                except Exception as e:
-                    print(f"    ⚠️  Error parsing concept: {str(e)}")
-                    logger.warning(f"Error parsing concept item: {str(e)}")
-                    continue
-            
-            return concepts
-            
-        except json.JSONDecodeError as e:
-            print(f"    ❌ JSON parse error: {str(e)}")
-            print(f"    Response preview: {response[:500]}...")
-            logger.error(f"Failed to parse Claude response as JSON: {str(e)}")
-            return []
+                        term = term_elem.text.strip() if term_elem is not None and term_elem.text else ''
+                        definition = definition_elem.text.strip() if definition_elem is not None and definition_elem.text else ''
+                        
+                        source_sentences = []
+                        if source_sentences_elem is not None:
+                            for sentence_elem in source_sentences_elem.findall('sentence'):
+                                if sentence_elem.text:
+                                    source_sentences.append(sentence_elem.text.strip())
+                        
+                        # Validate concept has required fields
+                        if term and definition:
+                            concept = ConceptExtractionData(
+                                term=term,
+                                definition=definition,
+                                source_sentences=source_sentences
+                            )
+                            concepts.append(concept)
+                        else:
+                            logger.warning(f"Skipping invalid concept: term={term}, definition={definition}")
+                            
+                    except Exception as e:
+                        logger.warning(f"Error parsing concept element: {str(e)}")
+                        continue
+                
+                if concepts:
+                    return concepts
+                    
+        except ET.ParseError as e:
+            print(f"    ⚠️  XML parse error, trying fallback: {str(e)}")
+            logger.warning(f"XML parse failed, trying regex fallback: {str(e)}")
         except Exception as e:
-            print(f"    ❌ Parse error: {str(e)}")
-            logger.error(f"Error parsing Claude response: {str(e)}")
-            return []
+            print(f"    ⚠️  Parse error, trying fallback: {str(e)}")
+            logger.warning(f"Parse error, trying fallback: {str(e)}")
+        
+        # Strategy 2: Regex extraction as fallback
+        print(f"    🔄 Using regex fallback parser...")
+        try:
+            concepts = []
+            
+            # Pattern to match concept blocks
+            concept_pattern = r'<concept>\s*<term>(.*?)</term>\s*<definition>(.*?)</definition>(?:\s*<source_sentences>(.*?)</source_sentences>)?'
+            matches = re.findall(concept_pattern, response, re.DOTALL)
+            
+            for match in matches:
+                term = match[0].strip()
+                definition = match[1].strip()
+                source_sentences_xml = match[2] if len(match) > 2 else ''
+                
+                # Extract sentences
+                source_sentences = []
+                if source_sentences_xml:
+                    sentence_pattern = r'<sentence>(.*?)</sentence>'
+                    sentences = re.findall(sentence_pattern, source_sentences_xml, re.DOTALL)
+                    source_sentences = [s.strip() for s in sentences if s.strip()]
+                
+                if term and definition:
+                    concept = ConceptExtractionData(
+                        term=term,
+                        definition=definition,
+                        source_sentences=source_sentences
+                    )
+                    concepts.append(concept)
+            
+            if concepts:
+                print(f"    ✅ Regex fallback extracted {len(concepts)} concepts")
+                return concepts
+                
+        except Exception as e:
+            print(f"    ❌ Regex fallback failed: {str(e)}")
+            logger.error(f"Regex fallback failed: {str(e)}")
+        
+        # Strategy 3: Last resort - return empty and log for manual review
+        print(f"    ❌ All parsing strategies failed")
+        print(f"    Response preview: {response[:500]}...")
+        logger.error(f"All parsing strategies failed. Response: {response[:1000]}")
+        return []
     
     def _enrich_with_context(
         self,
@@ -300,6 +377,7 @@ JSON array:"""
         )
         
         # Create Concept object
+        from datetime import datetime
         concept = Concept(
             id=str(uuid4()),
             document_id=document_id,
@@ -313,7 +391,7 @@ JSON array:"""
             importance_score=importance_score,
             validated=False,
             merged_into=None,
-            created_at=None,  # Will be set by database
+            created_at=datetime.utcnow(),  # Set current timestamp
             updated_at=None
         )
         

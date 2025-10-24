@@ -21,11 +21,14 @@ type AuthMode = 'signin' | 'signup';
 export function AuthPage() {
   const [mode, setMode] = useState<AuthMode>('signin');
   const cardRef = useRef<HTMLDivElement>(null);
-  
+
+  // Detect reduced motion preference for accessibility
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
   // 3D tilt effect
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
-  
+
   const rotateX = useSpring(useTransform(mouseY, [-300, 300], [5, -5]), {
     stiffness: 150,
     damping: 15,
@@ -49,6 +52,20 @@ export function AuthPage() {
     mouseY.set(0);
   };
 
+  // Spotlight effect state
+  const [spotlightPos, setSpotlightPos] = useState({ x: 0, y: 0 });
+  const [showSpotlight, setShowSpotlight] = useState(false);
+
+  const handlePageMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (prefersReducedMotion) return;
+    setSpotlightPos({ x: e.clientX, y: e.clientY });
+    setShowSpotlight(true);
+  };
+
+  const handlePageMouseLeave = () => {
+    setShowSpotlight(false);
+  };
+
   const features = [
     { icon: Brain, title: 'AI-Powered Analogies', color: 'from-purple-500 to-pink-500' },
     { icon: Map, title: 'Visual Concept Maps', color: 'from-blue-500 to-cyan-500' },
@@ -62,37 +79,49 @@ export function AuthPage() {
       exit="exit"
       variants={pageTransition}
       className="min-h-screen flex items-center justify-center p-4 lg:p-8 relative overflow-hidden"
+      onMouseMove={handlePageMouseMove}
+      onMouseLeave={handlePageMouseLeave}
     >
+      {/* Gentle spotlight effect following cursor */}
+      {!prefersReducedMotion && showSpotlight && (
+        <motion.div
+          className="pointer-events-none fixed inset-0 z-0"
+          animate={{
+            background: `radial-gradient(600px circle at ${spotlightPos.x}px ${spotlightPos.y}px, rgba(139, 92, 246, 0.15), transparent 40%)`,
+          }}
+          transition={{ type: 'spring', stiffness: 50, damping: 20 }}
+        />
+      )}
       {/* Animated gradient background with radial overlays */}
       <div className="absolute inset-0 bg-gradient-to-br from-deep-amethyst/5 via-transparent to-warm-coral/5 dark:from-deep-amethyst/30 dark:via-deep-amethyst/10 dark:to-warm-coral/10" />
-      
-      {/* Pulsing radial gradients - more purple in dark mode */}
+
+      {/* Pulsing radial gradients - more purple in dark mode, slower and calmer */}
       <motion.div
         className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-deep-amethyst/10 dark:bg-deep-amethyst/30 blur-3xl"
         animate={{
-          scale: [1, 1.2, 1],
-          opacity: [0.3, 0.5, 0.3],
+          scale: [1, 1.15, 1],
+          opacity: [0.3, 0.45, 0.3],
         }}
-        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
       />
       <motion.div
         className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-warm-coral/10 dark:bg-deep-amethyst/20 blur-3xl"
         animate={{
-          scale: [1.2, 1, 1.2],
-          opacity: [0.5, 0.3, 0.5],
+          scale: [1.15, 1, 1.15],
+          opacity: [0.45, 0.3, 0.45],
         }}
-        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
       />
       <motion.div
         className="absolute top-1/2 right-1/3 w-96 h-96 rounded-full bg-deep-amethyst/5 dark:bg-deep-amethyst/25 blur-3xl"
         animate={{
           scale: [1, 1.1, 1],
-          opacity: [0.2, 0.4, 0.2],
+          opacity: [0.2, 0.35, 0.2],
         }}
-        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+        transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
       />
 
-      {/* Floating particles */}
+      {/* Floating particles - slower and more subtle */}
       {[...Array(20)].map((_, i) => (
         <motion.div
           key={i}
@@ -102,13 +131,14 @@ export function AuthPage() {
             top: `${Math.random() * 100}%`,
           }}
           animate={{
-            y: [0, -30, 0],
-            opacity: [0, 1, 0],
+            y: [0, -40, 0],
+            opacity: [0, 0.8, 0],
           }}
           transition={{
-            duration: 3 + Math.random() * 2,
+            duration: 5 + Math.random() * 3,
             repeat: Infinity,
-            delay: Math.random() * 2,
+            delay: Math.random() * 3,
+            ease: 'easeInOut',
           }}
         />
       ))}
@@ -185,15 +215,15 @@ export function AuthPage() {
           ref={cardRef}
           className="flex-1 max-w-md mx-auto lg:mx-0"
           style={{
-            rotateX,
-            rotateY,
+            rotateX: prefersReducedMotion ? 0 : rotateX,
+            rotateY: prefersReducedMotion ? 0 : rotateY,
             transformStyle: 'preserve-3d',
           }}
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
-          initial={{ opacity: 0, scale: 0.9 }}
+          onMouseMove={prefersReducedMotion ? undefined : handleMouseMove}
+          onMouseLeave={prefersReducedMotion ? undefined : handleMouseLeave}
+          initial={{ opacity: 0, scale: prefersReducedMotion ? 1 : 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.1 }}
+          transition={{ delay: prefersReducedMotion ? 0 : 0.1 }}
         >
           {/* Glowing border effect */}
           <div className="relative">
@@ -205,30 +235,31 @@ export function AuthPage() {
               transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
               style={{ backgroundSize: '200% 200%' }}
             />
-            
-            {/* Main card with glassmorphism */}
-            <div className="relative bg-white/80 dark:bg-dark-bg-tertiary/70 backdrop-blur-2xl rounded-3xl p-8 shadow-2xl border border-gray-200/50 dark:border-white/10">
+
+            {/* Main card with glassmorphism and inner shadow for depth */}
+            <div className="relative bg-white/80 dark:bg-dark-bg-tertiary/70 backdrop-blur-2xl rounded-3xl p-8 shadow-2xl border border-gray-200/50 dark:border-white/10"
+              style={{ boxShadow: 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.06), 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}
+            >
               {/* Glassmorphism Tab Switcher with liquid morphing */}
               <div className="relative mb-8">
                 <div className="flex gap-2 p-1.5 rounded-2xl bg-gray-100/80 dark:bg-dark-bg-tertiary/60 backdrop-blur-xl border border-gray-200/50 dark:border-white/10 shadow-lg">
                   {/* Sliding indicator with layoutId for smooth morphing */}
                   <motion.div
                     layoutId="activeTab"
-                    className="absolute top-1.5 bottom-1.5 rounded-xl bg-gradient-to-r from-deep-amethyst to-warm-coral shadow-md"
+                    className="absolute top-1.5 bottom-1.5 rounded-xl bg-gradient-to-r from-purple-700 via-purple-600 to-pink-600 dark:from-deep-amethyst dark:to-warm-coral shadow-md"
                     transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                   />
-                  
+
                   {/* Sign In Tab */}
                   <button
                     onClick={() => setMode('signin')}
                     className="relative flex-1 py-3 px-4 rounded-xl font-medium transition-colors z-10"
                   >
                     <motion.span
-                      className={`flex items-center justify-center gap-2 transition-colors ${
-                        mode === 'signin' 
-                          ? 'text-white' 
-                          : 'text-gray-700 dark:text-gray-300'
-                      }`}
+                      className={`flex items-center justify-center gap-2 transition-colors ${mode === 'signin'
+                        ? 'text-white'
+                        : 'text-gray-900 dark:text-gray-400'
+                        }`}
                       animate={{ scale: mode === 'signin' ? 1 : 0.95 }}
                     >
                       <motion.div
@@ -240,18 +271,17 @@ export function AuthPage() {
                       Sign In
                     </motion.span>
                   </button>
-                  
+
                   {/* Sign Up Tab */}
                   <button
                     onClick={() => setMode('signup')}
                     className="relative flex-1 py-3 px-4 rounded-xl font-medium transition-colors z-10"
                   >
                     <motion.span
-                      className={`flex items-center justify-center gap-2 transition-colors ${
-                        mode === 'signup' 
-                          ? 'text-white' 
-                          : 'text-gray-700 dark:text-gray-300'
-                      }`}
+                      className={`flex items-center justify-center gap-2 transition-colors ${mode === 'signup'
+                        ? 'text-white'
+                        : 'text-gray-900 dark:text-gray-400'
+                        }`}
                       animate={{ scale: mode === 'signup' ? 1 : 0.95 }}
                     >
                       <motion.div
@@ -281,20 +311,29 @@ export function AuthPage() {
                       <div className="text-center mb-8">
                         <motion.div
                           className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r from-deep-amethyst to-warm-coral mb-4 shadow-lg"
+                          style={{ transform: 'translateZ(20px)' }}
                           whileHover={{ scale: 1.1, rotate: 5 }}
                           whileTap={{ scale: 0.95 }}
                         >
                           <LogIn size={32} className="text-white" />
                         </motion.div>
-                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                        <motion.h1
+                          className="text-3xl font-bold text-gray-900 dark:text-white mb-2"
+                          style={{ transform: 'translateZ(10px)' }}
+                        >
                           Welcome Back
-                        </h1>
-                        <p className="text-gray-700 dark:text-gray-300">
+                        </motion.h1>
+                        <motion.p
+                          className="text-gray-700 dark:text-gray-300"
+                          style={{ transform: 'translateZ(5px)' }}
+                        >
                           Continue your learning journey
-                        </p>
+                        </motion.p>
                       </div>
 
-                      <LoginForm />
+                      <motion.div style={{ transform: 'translateZ(0px)' }}>
+                        <LoginForm />
+                      </motion.div>
                     </motion.div>
                   ) : (
                     <motion.div
@@ -308,18 +347,28 @@ export function AuthPage() {
                       <div className="text-center mb-8">
                         <motion.div
                           className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r from-deep-amethyst to-warm-coral mb-4 shadow-lg"
+                          style={{ transform: 'translateZ(20px)' }}
                           whileHover={{ scale: 1.1, rotate: -5 }}
                           whileTap={{ scale: 0.95 }}
                         >
                           <UserPlus size={32} className="text-white" />
                         </motion.div>
-                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                        <motion.h1
+                          className="text-3xl font-bold text-gray-900 dark:text-white mb-2"
+                          style={{ transform: 'translateZ(10px)' }}
+                        >
                           Create Account
-                        </h1>
-                        <p className="text-gray-700 dark:text-gray-300 mb-3">
+                        </motion.h1>
+                        <motion.p
+                          className="text-gray-700 dark:text-gray-300 mb-3"
+                          style={{ transform: 'translateZ(5px)' }}
+                        >
                           Transform your PDFs into interactive concept maps
-                        </p>
-                        <div className="flex items-center justify-center gap-4 text-xs text-gray-600 dark:text-gray-400">
+                        </motion.p>
+                        <motion.div
+                          className="flex items-center justify-center gap-4 text-xs text-gray-600 dark:text-gray-400"
+                          style={{ transform: 'translateZ(5px)' }}
+                        >
                           <motion.span
                             className="flex items-center gap-1"
                             whileHover={{ scale: 1.1 }}
@@ -341,10 +390,12 @@ export function AuthPage() {
                             <span className="w-1.5 h-1.5 rounded-full bg-warm-coral animate-pulse" style={{ animationDelay: '0.4s' }} />
                             Personalized
                           </motion.span>
-                        </div>
+                        </motion.div>
                       </div>
 
-                      <RegisterForm />
+                      <motion.div style={{ transform: 'translateZ(0px)' }}>
+                        <RegisterForm />
+                      </motion.div>
                     </motion.div>
                   )}
                 </AnimatePresence>

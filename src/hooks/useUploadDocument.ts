@@ -13,11 +13,13 @@ interface UploadDocumentVariables {
   courseId: string;
   file: File;
   sha256Hash?: string;
+  onProgress?: (progress: number) => void;
 }
 
 export function useUploadDocument() {
   return useApiMutation<UploadDocumentResponse, UploadDocumentVariables>(
-    ({ courseId, file, sha256Hash }) => pblService.uploadDocument(courseId, file, sha256Hash),
+    ({ courseId, file, sha256Hash, onProgress }) => 
+      pblService.uploadDocument(courseId, file, sha256Hash, onProgress),
     {
       onSuccess: (_data, variables) => {
         // Invalidate course documents list

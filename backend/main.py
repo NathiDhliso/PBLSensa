@@ -18,27 +18,46 @@ from services.cache_manager import CacheManager
 from services.rate_limiter import RateLimiter
 from services.cost_tracker import CostTracker
 
-# Import new Sensa Learn routers
+# Import routers
 from routers.sensa_profile import router as profile_router
 from routers.sensa_questions import router as questions_router
 from routers.sensa_analogies import router as analogies_router
-# from routers.pbl_documents import router as pbl_router  # Temporarily disabled
+# PBL router temporarily disabled - has incomplete model definitions
+# from routers.pbl_documents import router as pbl_router
 
 app = FastAPI(title="PBL API", version="2.0.0")
 
-# Include Sensa Learn routers
+# Database connection
+from config.db_connection import get_db_connection
+
+@app.on_event("startup")
+async def startup():
+    """Initialize database connection on startup"""
+    db = get_db_connection()
+    connected = await db.connect()
+    if connected:
+        print("✅ Database connected - PBL features enabled")
+    else:
+        print("⚠️  Database not connected - PBL features limited")
+
+@app.on_event("shutdown")
+async def shutdown():
+    """Close database connection on shutdown"""
+    db = get_db_connection()
+    await db.disconnect()
+
+# Include routers
 app.include_router(profile_router)
 app.include_router(questions_router)
 app.include_router(analogies_router)
-
-# Include PBL router
-# app.include_router(pbl_router)  # Temporarily disabled due to import issues
+# app.include_router(pbl_router)  # Will enable once database is connected
 
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
+        "http://localhost:5174",  # Vite alternate port
         "http://localhost:5175",  # Vite alternate port
         "http://localhost:3000",
     ],
@@ -47,7 +66,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-memory storage (replace with database in production)
+# In-memory storage (for local development without database)
 courses_db = {}
 documents_db = {}
 concept_maps_db = {}
@@ -55,6 +74,9 @@ users_db = {}  # User profiles storage
 analogies_db = {}  # Analogies storage
 complexity_db = {}  # Chapter complexity storage
 feedback_db = {}  # Analogy feedback storage
+pbl_concepts_db = {}  # PBL concepts by document_id
+pbl_relationships_db = {}  # PBL relationships by document_id
+pbl_visualizations_db = {}  # PBL visualizations by document_id
 
 # Initialize services
 analogy_generator = MockAnalogyGenerator()
@@ -170,6 +192,37 @@ class FeedbackSummary(BaseModel):
     rating_count: int
     rating_distribution: Dict[int, int]
 
+# Initialize sample courses
+def init_sample_data():
+    """Initialize sample courses for development"""
+    courses_db["course-1"] = Course(
+        id="course-1",
+        name="Introduction to Python",
+        description="Learn Python programming basics",
+        created_at="2025-10-22T10:00:00",
+        updated_at="2025-10-22T10:00:00",
+        document_count=0
+    )
+    courses_db["course-2"] = Course(
+        id="course-2",
+        name="Web Development",
+        description="Build modern web applications",
+        created_at="2025-10-22T10:00:00",
+        updated_at="2025-10-22T10:00:00",
+        document_count=0
+    )
+    courses_db["course-3"] = Course(
+        id="course-3",
+        name="Data Science",
+        description="Analyze data with Python",
+        created_at="2025-10-22T10:00:00",
+        updated_at="2025-10-22T10:00:00",
+        document_count=0
+    )
+
+# Initialize sample data
+init_sample_data()
+
 # Health check
 @app.get("/health")
 async def health_check():
@@ -246,50 +299,73 @@ async def upload_document(
     # Force flush to ensure prints appear immediately
     print("\n" + "="*80, flush=True)
     print("🚨 UPLOAD ENDPOINT HIT!", flush=True)
+    print("="*80, flush=True)
+    print(f"📋 Received Parameters:", flush=True)
+    print(f"   - Filename: {file.filename}", flush=True)
+    print(f"   - Course ID: {course_id}", flush=True)
+    print(f"   - SHA256 Hash: {sha256_hash}", flush=True)
+    print(f"   - Content Type: {file.content_type}", flush=True)
+    print(f"📊 Current State:", flush=True)
+    print(f"   - Available Courses: {list(courses_db.keys())}", flush=True)
+    print(f"   - Course Exists: {course_id in courses_db}", flush=True)
     print("="*80 + "\n", flush=True)
     sys.stdout.flush()
     
     # Validate file type
     if not file.filename.endswith('.pdf'):
+        print(f"❌ ERROR: Invalid file type - {file.filename}", flush=True)
         raise HTTPException(status_code=422, detail="Only PDF files are supported")
     
     if course_id not in courses_db:
+        print(f"❌ ERROR: Course not found - {course_id}", flush=True)
+        print(f"   Available courses: {list(courses_db.keys())}", flush=True)
         raise HTTPException(status_code=404, detail="Course not found")
+    
+    print(f"✅ Validation passed!", flush=True)
     
     # Create document record
     doc_id = f"doc-{len(documents_db) + 1}"
     task_id = str(uuid.uuid4())
     
-    print(f"\n{'='*80}")
-    print(f"📤 NEW DOCUMENT UPLOAD")
-    print(f"{'='*80}")
-    print(f"Filename: {file.filename}")
-    print(f"Course ID: {course_id}")
-    print(f"Document ID: {doc_id}")
-    print(f"Task ID: {task_id}")
-    print(f"{'='*80}\n")
+    print(f"\n{'='*80}", flush=True)
+    print(f"📤 CREATING DOCUMENT RECORD", flush=True)
+    print(f"{'='*80}", flush=True)
+    print(f"   Filename: {file.filename}", flush=True)
+    print(f"   Course ID: {course_id}", flush=True)
+    print(f"   Document ID: {doc_id}", flush=True)
+    print(f"   Task ID: {task_id}", flush=True)
+    print(f"{'='*80}\n", flush=True)
     
     # Save file temporarily
     temp_path = None
     try:
+        print(f"💾 Creating temporary file...", flush=True)
         # Create temp file
         with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_file:
             temp_path = temp_file.name
-            print(f"💾 Saving to temp file: {temp_path}")
+            print(f"   Temp path: {temp_path}", flush=True)
             
             # Read and save file
+            print(f"📖 Reading file content...", flush=True)
             content = await file.read()
             temp_file.write(content)
-            print(f"✅ File saved ({len(content)} bytes)")
+            print(f"✅ File saved successfully ({len(content):,} bytes)", flush=True)
         
         # Process with PBL pipeline
-        print(f"\n🚀 Starting PBL pipeline processing...")
+        print(f"\n{'='*80}", flush=True)
+        print(f"🚀 STARTING PBL PIPELINE PROCESSING", flush=True)
+        print(f"{'='*80}", flush=True)
+        print(f"🔧 Initializing pipeline...", flush=True)
         pipeline = get_pbl_pipeline()
+        print(f"✅ Pipeline initialized", flush=True)
         
+        print(f"📊 Processing document...", flush=True)
         result = await pipeline.process_document(
             pdf_path=temp_path,
             document_id=uuid.UUID(doc_id.replace('doc-', '00000000-0000-0000-0000-00000000000'))
         )
+        print(f"✅ Pipeline processing complete", flush=True)
+        print(f"   Success: {result.get('success', False)}", flush=True)
         
         # Create document record
         document = Document(
@@ -302,26 +378,52 @@ async def upload_document(
         )
         
         documents_db[doc_id] = document
+        print(f"💾 Document record saved", flush=True)
         
         # Update course document count
         courses_db[course_id].document_count += 1
+        print(f"📈 Course document count updated: {courses_db[course_id].document_count}", flush=True)
         
-        print(f"\n✅ Document processing complete!")
-        print(f"Status: {document.status}")
-        print(f"Results: {result.get('results', {})}\n")
+        # Get results summary
+        results = result.get('results', {})
+        print(f"\n🔍 DEBUG: Full result keys: {list(result.keys())}", flush=True)
+        print(f"🔍 DEBUG: Results keys: {list(results.keys())}", flush=True)
+        print(f"🔍 DEBUG: Result success: {result.get('success')}", flush=True)
+        
+        concepts_count = len(results.get('concepts', []))
+        relationships_count = len(results.get('relationships', []))
+        
+        print(f"\n{'='*80}", flush=True)
+        print(f"✅ UPLOAD COMPLETE", flush=True)
+        print(f"{'='*80}", flush=True)
+        print(f"   Status: {document.status}", flush=True)
+        print(f"   Document ID: {doc_id}", flush=True)
+        print(f"   Task ID: {task_id}", flush=True)
+        print(f"   Concepts: {concepts_count}", flush=True)
+        print(f"   Relationships: {relationships_count}", flush=True)
+        if concepts_count > 0:
+            print(f"   💡 Data available - PBL router will serve from database", flush=True)
+        else:
+            print(f"   ⚠️  No concepts extracted - check pipeline logs above", flush=True)
+        print(f"{'='*80}\n", flush=True)
         
         return {
             "task_id": task_id,
             "document_id": doc_id,
             "status": document.status,
-            "results": result.get('results', {})
+            "results": results
         }
         
     except Exception as e:
-        print(f"\n❌ ERROR during document processing:")
-        print(f"Error: {str(e)}")
+        print(f"\n{'='*80}", flush=True)
+        print(f"❌ ERROR DURING PROCESSING", flush=True)
+        print(f"{'='*80}", flush=True)
+        print(f"Error Type: {type(e).__name__}", flush=True)
+        print(f"Error Message: {str(e)}", flush=True)
+        print(f"{'='*80}", flush=True)
         import traceback
         traceback.print_exc()
+        print(f"{'='*80}\n", flush=True)
         
         # Still create document record but mark as failed
         document = Document(
@@ -333,6 +435,7 @@ async def upload_document(
             processed_at=None
         )
         documents_db[doc_id] = document
+        print(f"💾 Failed document record saved", flush=True)
         
         raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
         
@@ -340,7 +443,7 @@ async def upload_document(
         # Clean up temp file
         if temp_path and os.path.exists(temp_path):
             os.unlink(temp_path)
-            print(f"🗑️  Cleaned up temp file")
+            print(f"🗑️  Cleaned up temp file: {temp_path}", flush=True)
 
 @app.delete("/documents/{document_id}")
 async def delete_document(document_id: str):
@@ -851,34 +954,6 @@ async def get_analogy_feedback(analogy_id: str):
 async def submit_feedback(feedback: dict):
     """Submit user feedback"""
     return {"message": "Feedback received", "id": str(uuid.uuid4())}
-
-# Mock PBL endpoints for local development
-@app.get("/api/pbl/documents/{document_id}/concepts")
-async def get_pbl_concepts(
-    document_id: str,
-    validated: Optional[bool] = Query(None)
-):
-    """Get concepts for a PBL document"""
-    return []
-
-@app.get("/api/pbl/documents/{document_id}/duplicates")
-async def get_pbl_duplicates(document_id: str):
-    """Get duplicate concepts for a PBL document"""
-    return {
-        "duplicates": [],
-        "total_groups": 0
-    }
-
-@app.get("/api/pbl/visualizations/{document_id}")
-async def get_pbl_visualization(document_id: str):
-    """Get visualization for a PBL document"""
-    return {
-        "id": f"viz-{document_id}",
-        "document_id": document_id,
-        "nodes": [],
-        "edges": [],
-        "layout": "force-directed"
-    }
 
 if __name__ == "__main__":
     import uvicorn

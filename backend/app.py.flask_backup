@@ -7,11 +7,32 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from datetime import datetime
 import uuid
+from simple_pdf_processor import process_pdf_document
 
 app = Flask(__name__)
 
-# CORS configuration
-CORS(app, origins=["http://localhost:5173", "http://localhost:3000"])
+# Import and register v7 routes
+try:
+    from routers.v7_documents_flask import register_v7_routes
+    register_v7_routes(app)
+    print("✅ V7 routes registered at /api/v7")
+except ImportError as e:
+    print(f"⚠️  V7 routes not available: {e}")
+
+# Import and register PBL routes
+try:
+    from routers.pbl_documents_flask import register_pbl_routes
+    register_pbl_routes(app)
+    print("✅ PBL routes registered at /api/pbl")
+except ImportError as e:
+    print(f"⚠️  PBL routes not available: {e}")
+
+# CORS configuration - Allow all methods including OPTIONS
+CORS(app, 
+     resources={r"/*": {"origins": ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"]}},
+     supports_credentials=True,
+     allow_headers=["Content-Type", "Authorization"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 
 # In-memory storage with sample data
 courses_db = {
