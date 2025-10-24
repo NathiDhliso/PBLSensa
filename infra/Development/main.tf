@@ -942,36 +942,42 @@ resource "aws_api_gateway_rest_api" "main" {
   }
 }
 
-resource "aws_api_gateway_vpc_link" "main" {
-  name        = "${var.project_name}-${var.environment}-${var.developer_id}-vpc-link"
-  target_arns = [aws_lb.main.arn]
+# VPC Link requires Network Load Balancer (NLB), not Application Load Balancer (ALB)
+# Commented out until NLB is created or API Gateway is configured differently
+# resource "aws_api_gateway_vpc_link" "main" {
+#   name        = "${var.project_name}-${var.environment}-${var.developer_id}-vpc-link"
+#   target_arns = [aws_lb.main.arn]
+#
+#   tags = {
+#     Name = "${var.project_name}-${var.environment}-${var.developer_id}-vpc-link"
+#   }
+# }
 
-  tags = {
-    Name = "${var.project_name}-${var.environment}-${var.developer_id}-vpc-link"
-  }
-}
+# Deployment requires methods to be defined in the REST API
+# Commented out until API methods are configured
+# resource "aws_api_gateway_deployment" "main" {
+#   rest_api_id = aws_api_gateway_rest_api.main.id
+#
+#   triggers = {
+#     redeployment = sha1(jsonencode(aws_api_gateway_rest_api.main.body))
+#   }
+#
+#   lifecycle {
+#     create_before_destroy = true
+#   }
+# }
 
-resource "aws_api_gateway_deployment" "main" {
-  rest_api_id = aws_api_gateway_rest_api.main.id
-
-  triggers = {
-    redeployment = sha1(jsonencode(aws_api_gateway_rest_api.main.body))
-  }
-
-  lifecycle {
-    create_before_destroy = true
-  }
-}
-
-resource "aws_api_gateway_stage" "dev" {
-  deployment_id = aws_api_gateway_deployment.main.id
-  rest_api_id   = aws_api_gateway_rest_api.main.id
-  stage_name    = "dev"
-
-  tags = {
-    Name = "${var.project_name}-${var.environment}-${var.developer_id}-api-stage"
-  }
-}
+# Stage depends on deployment
+# Commented out until deployment is configured
+# resource "aws_api_gateway_stage" "dev" {
+#   deployment_id = aws_api_gateway_deployment.main.id
+#   rest_api_id   = aws_api_gateway_rest_api.main.id
+#   stage_name    = "dev"
+#
+#   tags = {
+#     Name = "${var.project_name}-${var.environment}-${var.developer_id}-api-stage"
+#   }
+# }
 
 resource "aws_cloudwatch_log_group" "api_gateway" {
   name              = "/aws/apigateway/${var.project_name}-${var.environment}-${var.developer_id}"

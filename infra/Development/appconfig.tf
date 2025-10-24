@@ -37,6 +37,7 @@ resource "aws_appconfig_configuration_profile" "feature_flags" {
 }
 
 # Initial Feature Flags Configuration
+# Simplified format compatible with AWS AppConfig Feature Flags
 resource "aws_appconfig_hosted_configuration_version" "feature_flags_v1" {
   application_id           = aws_appconfig_application.main.id
   configuration_profile_id = aws_appconfig_configuration_profile.feature_flags.configuration_profile_id
@@ -44,88 +45,26 @@ resource "aws_appconfig_hosted_configuration_version" "feature_flags_v1" {
   content_type             = "application/json"
 
   content = jsonencode({
-    version = "1"
     flags = {
       use_llamaparse = {
-        name        = "use_llamaparse"
-        description = "Use LlamaParse for PDF parsing instead of fallback"
-        _deprecation = {
-          status = "planned"
-        }
-        attributes = {
-          enabled = {
-            constraints = {
-              type     = "boolean"
-              required = true
-            }
-          }
-          rollout_percentage = {
-            constraints = {
-              type     = "number"
-              required = false
-            }
-          }
-        }
+        name = "use_llamaparse"
       }
       use_claude_35_sonnet = {
-        name        = "use_claude_35_sonnet"
-        description = "Use Claude 3.5 Sonnet for concept mapping"
-        attributes = {
-          enabled = {
-            constraints = {
-              type     = "boolean"
-              required = true
-            }
-          }
-        }
+        name = "use_claude_35_sonnet"
       }
       enable_exam_relevance = {
-        name        = "enable_exam_relevance"
-        description = "Calculate and display exam relevance scores"
-        attributes = {
-          enabled = {
-            constraints = {
-              type     = "boolean"
-              required = true
-            }
-          }
-        }
+        name = "enable_exam_relevance"
       }
       enable_multi_document_synthesis = {
-        name        = "enable_multi_document_synthesis"
-        description = "Enable cross-document concept merging"
-        attributes = {
-          enabled = {
-            constraints = {
-              type     = "boolean"
-              required = true
-            }
-          }
-          max_documents = {
-            constraints = {
-              type     = "number"
-              required = false
-            }
-          }
-        }
+        name = "enable_multi_document_synthesis"
       }
       use_sagemaker_embeddings = {
-        name        = "use_sagemaker_embeddings"
-        description = "Use SageMaker HDT-E model for embeddings"
-        attributes = {
-          enabled = {
-            constraints = {
-              type     = "boolean"
-              required = true
-            }
-          }
-        }
+        name = "use_sagemaker_embeddings"
       }
     }
     values = {
       use_llamaparse = {
-        enabled            = true
-        rollout_percentage = 100
+        enabled = true
       }
       use_claude_35_sonnet = {
         enabled = true
@@ -134,13 +73,13 @@ resource "aws_appconfig_hosted_configuration_version" "feature_flags_v1" {
         enabled = false
       }
       enable_multi_document_synthesis = {
-        enabled            = false
-        max_documents      = 5
+        enabled = false
       }
       use_sagemaker_embeddings = {
         enabled = false
       }
     }
+    version = "1"
   })
 }
 

@@ -83,7 +83,7 @@ resource "aws_sagemaker_endpoint_configuration" "hdt_e_serverless" {
     model_name   = aws_sagemaker_model.hdt_e.name
 
     serverless_config {
-      memory_size_in_mb = 4096
+      memory_size_in_mb = 2048  # Reduced from 4096 to fit within account quota (3072 MB limit)
       max_concurrency   = 5
     }
   }

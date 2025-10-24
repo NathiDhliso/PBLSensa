@@ -20,7 +20,7 @@ export function LoginPage() {
       className="min-h-screen flex items-center justify-center p-4"
     >
       <div className="w-full max-w-md">
-        <div className="bg-white dark:bg-dark-bg-tertiary rounded-lg shadow-lg p-8">
+        <div className="p-8">
           {/* Logo and Header */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r from-deep-amethyst to-warm-coral mb-4">

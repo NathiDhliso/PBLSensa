@@ -20,22 +20,7 @@ export function RegisterPage() {
       className="min-h-screen flex items-center justify-center p-4"
     >
       <div className="w-full max-w-md">
-        <div className="bg-white dark:bg-dark-bg-tertiary rounded-lg shadow-lg p-8">
-          {/* Progress Indicator */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between text-sm mb-2">
-              <span className="text-deep-amethyst dark:text-dark-accent-amethyst font-medium">
-                Step 1 of 2
-              </span>
-              <span className="text-text-light dark:text-dark-text-tertiary">
-                Create Account
-              </span>
-            </div>
-            <div className="h-2 bg-gray-200 dark:bg-dark-bg-secondary rounded-full overflow-hidden">
-              <div className="h-full w-1/2 bg-gradient-to-r from-deep-amethyst to-warm-coral rounded-full" />
-            </div>
-          </div>
-
+        <div className="p-8">
           {/* Logo and Header */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r from-deep-amethyst to-warm-coral mb-4">
