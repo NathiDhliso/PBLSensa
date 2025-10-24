@@ -1,6 +1,7 @@
 {
   "name": "sensa-learn",
   "version": "1.0.0",
+  "type": "module",
   "description": "Sensa Learn - Brand Theme System",
   "scripts": {
     "dev": "vite",
