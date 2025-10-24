@@ -2,21 +2,22 @@
 # AWS X-Ray and CloudWatch Monitoring
 # ============================================================================
 
+# API Gateway stage is commented out - method settings disabled
 # Enable X-Ray tracing for API Gateway
-resource "aws_api_gateway_method_settings" "all" {
-  rest_api_id = aws_api_gateway_rest_api.main.id
-  stage_name  = aws_api_gateway_stage.dev.stage_name
-  method_path = "*/*"
-
-  settings {
-    metrics_enabled    = true
-    logging_level      = "INFO"
-    data_trace_enabled = true
-    
-    throttling_burst_limit = 100
-    throttling_rate_limit  = 50
-  }
-}
+# resource "aws_api_gateway_method_settings" "all" {
+#   rest_api_id = aws_api_gateway_rest_api.main.id
+#   stage_name  = aws_api_gateway_stage.dev.stage_name
+#   method_path = "*/*"
+#
+#   settings {
+#     metrics_enabled    = true
+#     logging_level      = "INFO"
+#     data_trace_enabled = true
+#     
+#     throttling_burst_limit = 100
+#     throttling_rate_limit  = 50
+#   }
+# }
 
 # CloudWatch Dashboard
 resource "aws_cloudwatch_dashboard" "main" {
@@ -241,28 +242,29 @@ resource "aws_cloudwatch_metric_alarm" "cache_hit_rate_low" {
 }
 
 # P2: API Gateway 5XX Errors
-resource "aws_cloudwatch_metric_alarm" "api_5xx_errors" {
-  alarm_name          = "${var.project_name}-${var.environment}-${var.developer_id}-api-5xx"
-  comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = 1
-  metric_name         = "5XXError"
-  namespace           = "AWS/ApiGateway"
-  period              = 300
-  statistic           = "Sum"
-  threshold           = 10
-  alarm_description   = "API Gateway is returning 5XX errors"
-  treat_missing_data  = "notBreaching"
-
-  dimensions = {
-    ApiName = aws_api_gateway_rest_api.main.name
-    Stage   = aws_api_gateway_stage.dev.stage_name
-  }
-
-  tags = {
-    Name     = "${var.project_name}-${var.environment}-${var.developer_id}-api-5xx-alarm"
-    Severity = "P2"
-  }
-}
+# API Gateway stage is commented out - alarm disabled
+# resource "aws_cloudwatch_metric_alarm" "api_5xx_errors" {
+#   alarm_name          = "${var.project_name}-${var.environment}-${var.developer_id}-api-5xx"
+#   comparison_operator = "GreaterThanThreshold"
+#   evaluation_periods  = 1
+#   metric_name         = "5XXError"
+#   namespace           = "AWS/ApiGateway"
+#   period              = 300
+#   statistic           = "Sum"
+#   threshold           = 10
+#   alarm_description   = "API Gateway is returning 5XX errors"
+#   treat_missing_data  = "notBreaching"
+#
+#   dimensions = {
+#     ApiName = aws_api_gateway_rest_api.main.name
+#     Stage   = aws_api_gateway_stage.dev.stage_name
+#   }
+#
+#   tags = {
+#     Name     = "${var.project_name}-${var.environment}-${var.developer_id}-api-5xx-alarm"
+#     Severity = "P2"
+#   }
+# }
 
 # SNS Topic for Alarms (optional - for email notifications)
 resource "aws_sns_topic" "alarms" {

@@ -25,10 +25,11 @@ output "api_gateway_id" {
   value       = aws_api_gateway_rest_api.main.id
 }
 
-output "api_gateway_stage_name" {
-  description = "API Gateway stage name"
-  value       = aws_api_gateway_stage.dev.stage_name
-}
+# API Gateway stage is commented out
+# output "api_gateway_stage_name" {
+#   description = "API Gateway stage name"
+#   value       = aws_api_gateway_stage.dev.stage_name
+# }
 
 # Storage (additional)
 output "logs_bucket" {
@@ -191,7 +192,7 @@ output "deployment_summary" {
     environment         = var.environment
     developer_id        = var.developer_id
     region              = var.aws_region
-    api_endpoint        = aws_api_gateway_stage.dev.invoke_url
+    api_endpoint        = "http://${aws_lb.main.dns_name}"  # Using ALB directly (API Gateway stage commented out)
     alb_endpoint        = "http://${aws_lb.main.dns_name}"
     dashboard_url       = "https://console.aws.amazon.com/cloudwatch/home?region=${var.aws_region}#dashboards:name=${aws_cloudwatch_dashboard.main.dashboard_name}"
     cognito_pool_id     = aws_cognito_user_pool.main.id

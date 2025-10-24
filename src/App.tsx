@@ -13,8 +13,7 @@ import { FocusMusicPlayer } from './components/music/FocusMusicPlayer';
 import { queryClient } from './config/queryClient';
 
 // Auth pages
-import { LoginPage } from './pages/auth/LoginPage';
-import { RegisterPage } from './pages/auth/RegisterPage';
+import { AuthPage } from './pages/auth/AuthPage';
 import { ConfirmEmailPage } from './pages/auth/ConfirmEmailPage';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
@@ -45,21 +44,16 @@ function AnimatedRoutes() {
         <Routes location={location} key={location.pathname}>
         {/* Public routes - redirect to dashboard if authenticated */}
         <Route
-          path="/login"
+          path="/auth"
           element={
             <PublicRoute>
-              <LoginPage />
+              <AuthPage />
             </PublicRoute>
           }
         />
-        <Route
-          path="/register"
-          element={
-            <PublicRoute>
-              <RegisterPage />
-            </PublicRoute>
-          }
-        />
+        {/* Redirect old routes to new unified auth page */}
+        <Route path="/login" element={<Navigate to="/auth" replace />} />
+        <Route path="/register" element={<Navigate to="/auth" replace />} />
         <Route
           path="/confirm-email"
           element={

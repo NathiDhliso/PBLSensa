@@ -1350,10 +1350,11 @@ output "alb_dns_name" {
   value       = aws_lb.main.dns_name
 }
 
-output "api_gateway_url" {
-  description = "API Gateway URL"
-  value       = aws_api_gateway_stage.dev.invoke_url
-}
+# API Gateway stage is commented out - using ALB directly
+# output "api_gateway_url" {
+#   description = "API Gateway URL"
+#   value       = aws_api_gateway_stage.dev.invoke_url
+# }
 
 output "rds_endpoint" {
   description = "RDS Endpoint"
